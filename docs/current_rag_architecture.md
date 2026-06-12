@@ -6,7 +6,7 @@
 
 ```mermaid
 flowchart TD
-    A["Knowledge Base<br/>data/avalon-game-records/*formatted.txt"] --> B["Chunking<br/>依阿瓦隆輪次切 chunks"]
+    A["Knowledge Base<br/>data/raw/* or RAG_KB_DIR"] --> B["Chunking<br/>Markdown / sectioned text / plain text"]
     B --> C["chunks.json<br/>儲存 chunk + metadata"]
     B --> D["embeddings.npy<br/>儲存 chunk embeddings"]
 

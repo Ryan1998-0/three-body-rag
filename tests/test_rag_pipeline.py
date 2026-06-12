@@ -4,10 +4,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from rag_demo.chunking import chunk_markdown
-from rag_demo.chunking import chunk_avalon_record_text, load_knowledge_base_chunks
-from rag_demo.config import RagConfig
+from rag_demo.chunking import chunk_avalon_record_text, chunk_sectioned_text, load_knowledge_base_chunks
+from rag_demo.config import RagConfig, resolve_project_path
+from rag_demo.action_result_resolution import answer_action_result
 from rag_demo import embeddings as embeddings_module
 from rag_demo.embeddings import chunk_to_embedding_text, embed_texts, load_embedding_matrix, save_embedding_matrix
+from rag_demo.evidence_policy import build_evidence_policy, has_answerable_event_evidence, sequence_number, should_include_evidence_line
+from rag_demo.entity_resolution import answer_entity_existence, extract_entity_numbers, parse_entity_existence_query
+from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
 from rag_demo.index_store import load_index, save_index
 from rag_demo.ollama_client import build_ollama_payload
 from rag_demo.model_providers import (
@@ -16,10 +20,11 @@ from rag_demo.model_providers import (
     parse_model_spec,
 )
 from rag_demo.prompting import build_answer_prompt, render_retrieved_context
+from rag_demo.context_summary import build_context_summary_prompt, build_deterministic_context_summary, extract_deterministic_evidence, summarize_retrieved_context
 from rag_demo.general_answer import build_general_answer_prompt
 from rag_demo.query import _format_output, answer_question
 from rag_demo.query_rewriter import build_rewrite_prompt, extract_retrieval_query, sanitize_retrieval_query
-from rag_demo.retrieval_verifier import build_verifier_prompt, parse_verifier_output
+from rag_demo.retrieval_verifier import build_verifier_prompt, extract_evidence_candidates, parse_verifier_output
 from rag_demo.retrieval_verifier import assess_retrieval_confidence, verify_retrieval
 from rag_demo.retrieval import embedding_search, hybrid_search, keyword_search
 from rag_demo.web_app import is_home_path, render_home
@@ -125,6 +130,29 @@ class RagPipelineTest(unittest.TestCase):
         self.assertEqual(chunks[1]["title"], "第2輪")
         self.assertIn("邪惡方破壞", chunks[1]["content"])
 
+    def test_chunk_sectioned_text_splits_generic_delimited_sections(self):
+        text = """Generic process notes
+
+=== Phase 1 ===
+Status: failed
+Owner: Team A
+
+=== Phase 2 ===
+Status: completed
+Owner: Team B
+"""
+
+        chunks = chunk_sectioned_text(text, source="process.txt", parent_title="Process Notes")
+
+        self.assertEqual([chunk["title"] for chunk in chunks], ["Phase 1", "Phase 2"])
+        self.assertEqual(chunks[0]["parent_title"], "Process Notes")
+        self.assertIn("Status: failed", chunks[0]["content"])
+
+    def test_resolve_project_path_reads_environment_override(self):
+        env = {"RAG_KB_DIR": "/tmp/custom-kb"}
+
+        self.assertEqual(resolve_project_path("RAG_KB_DIR", "data/raw", env=env), Path("/tmp/custom-kb"))
+
     def test_chunk_avalon_record_can_split_long_round_with_stride_overlap(self):
         long_record = """=== 第1輪 ===
 """ + ("第1輪發言內容。" * 80)
@@ -196,6 +224,50 @@ class RagPipelineTest(unittest.TestCase):
         self.assertIn("2.1 三節獎金", titles)
         self.assertIn("2.2 交通補助", titles)
         self.assertIn("2.3 生日福利", titles)
+
+    def test_keyword_search_ranks_actual_failure_above_zero_failure(self):
+        chunks = [
+            {
+                "id": "success-round",
+                "source": "avalon.txt",
+                "parent_title": "阿瓦隆對局紀錄",
+                "title": "第8輪",
+                "content": "本輪統計：任務：成功，正義方得分。任務牌：3 張，失敗牌 0 張。",
+            },
+            {
+                "id": "failed-round",
+                "source": "avalon.txt",
+                "parent_title": "阿瓦隆對局紀錄",
+                "title": "第2輪",
+                "content": "本輪統計：任務：失敗，邪惡方得分。任務牌：2 張，失敗牌 1 張。",
+            },
+        ]
+
+        results = keyword_search("哪幾輪任務出現失敗？", chunks, top_k=2)
+
+        self.assertEqual(results[0]["title"], "第2輪")
+
+    def test_keyword_search_uses_generic_outcome_polarity(self):
+        chunks = [
+            {
+                "id": "resolved-ticket",
+                "source": "ops.md",
+                "parent_title": "客服紀錄",
+                "title": "案件 A",
+                "content": "處理狀態：成功。錯誤次數 0 次。",
+            },
+            {
+                "id": "failed-ticket",
+                "source": "ops.md",
+                "parent_title": "客服紀錄",
+                "title": "案件 B",
+                "content": "處理狀態：失敗。錯誤原因：付款逾時。",
+            },
+        ]
+
+        results = keyword_search("哪些案件處理失敗？錯誤原因是什麼？", chunks, top_k=2)
+
+        self.assertEqual(results[0]["title"], "案件 B")
 
     def test_embedding_search_can_rank_by_semantic_vector(self):
         chunks = chunk_markdown(SAMPLE_MARKDOWN, source="sample.md")
@@ -269,6 +341,10 @@ class RagPipelineTest(unittest.TestCase):
         self.assertIn("請使用繁體中文回答", prompt)
         self.assertIn("不要使用簡體字", prompt)
         self.assertIn("無法從來源確認", prompt)
+        self.assertIn("不要使用一般常識、模型內部知識或來源外資訊補答案", prompt)
+        self.assertIn("knowledge base", prompt)
+        self.assertNotIn("員工手冊", prompt)
+        self.assertNotIn("制度可能故意不符合常識", prompt)
         self.assertIn("不要把已經有來源支持的內容列入無法確認", prompt)
         self.assertIn("無法確認只限於使用者問題本身", prompt)
         self.assertNotIn("第三點只寫「無」", prompt)
@@ -290,6 +366,416 @@ class RagPipelineTest(unittest.TestCase):
         self.assertIn("父層章節：2. 福利制度", context)
         self.assertIn("章節：", context)
         self.assertIn("內容：", context)
+
+    def test_render_retrieved_context_surfaces_key_excerpts_before_full_content(self):
+        context = render_retrieved_context(
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第2輪 / part 3",
+                    "content": ("前段發言。" * 80) + "本輪統計：任務：失敗，邪惡方得分。任務牌：2 張，失敗牌 1 張。",
+                }
+            ]
+        )
+
+        self.assertIn("關鍵摘錄：", context)
+        self.assertLess(context.index("關鍵摘錄："), context.index("內容："))
+        self.assertIn("任務：失敗，邪惡方得分", context)
+
+    def test_context_summary_prompt_includes_question_sources_and_output_rules(self):
+        prompt = build_context_summary_prompt(
+            "這場對局每位玩家的角色分別是什麼？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第1輪 / part 1",
+                    "content": "【API AI 1 / 梅林】\n【API AI 2 / 派西維爾】",
+                }
+            ],
+        )
+
+        self.assertIn("Context Summary Agent", prompt)
+        self.assertIn("使用者提問", prompt)
+        self.assertIn("來源資料", prompt)
+        self.assertIn("直接 evidence", prompt)
+        self.assertIn("不可新增來源沒有的資訊", prompt)
+        self.assertIn("只保留能直接回答問題的最小資訊", prompt)
+        self.assertIn("每個 evidence 最多一行", prompt)
+        self.assertIn("不要摘錄思考過程", prompt)
+        self.assertIn("只能包含指定的三個區塊", prompt)
+        self.assertIn("【API AI 1 / 梅林】", prompt)
+
+    def test_summarize_retrieved_context_uses_model_and_returns_summary(self):
+        calls = []
+
+        def fake_ask_model(prompt, **kwargs):
+            calls.append((prompt, kwargs))
+            return "## 輔助資訊\n無\n\n## 不足或衝突\n無\n\n---\n這段不應該進入 Answer Prompt"
+
+        summary = summarize_retrieved_context(
+            "誰是梅林？",
+            [{"source": "avalon.txt", "title": "第1輪", "content": "【API AI 1 / 梅林】"}],
+            model="fake",
+            ask_model_fn=fake_ask_model,
+        )
+
+        self.assertIn("## 程式抽取 evidence", summary)
+        self.assertIn("【API AI 1 / 梅林】", summary)
+        self.assertIn("## Summary Agent 補充整理", summary)
+        self.assertIn("最高優先", summary)
+        self.assertNotIn("---", summary)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("誰是梅林？", calls[0][0])
+        self.assertIn("程式已先抽出的 deterministic evidence", calls[0][0])
+        self.assertEqual(calls[0][1]["model"], "fake")
+
+    def test_build_deterministic_context_summary_does_not_need_summary_agent(self):
+        summary = build_deterministic_context_summary(
+            [{"source": "avalon.txt", "title": "第1輪", "content": "【API AI 1 / 梅林】"}]
+        )
+
+        self.assertIn("## 程式抽取 evidence", summary)
+        self.assertIn("最高優先", summary)
+        self.assertIn("【API AI 1 / 梅林】", summary)
+        self.assertNotIn("Summary Agent 補充整理", summary)
+
+    def test_evidence_policy_detects_generic_temporal_and_event_questions(self):
+        policy = build_evidence_policy("第一次付款失敗是哪一天？負責人是誰？")
+
+        self.assertTrue(policy.temporal_order)
+        self.assertTrue(policy.event_or_result_question)
+        self.assertTrue(policy.asks_participant)
+        self.assertTrue(policy.asks_outcome_detail)
+
+    def test_evidence_policy_detects_event_list_questions(self):
+        policy = build_evidence_policy("哪些案件處理失敗？各自負責人是誰？")
+
+        self.assertTrue(policy.event_list)
+        self.assertTrue(policy.event_or_result_question)
+
+    def test_evidence_policy_detects_result_only_constraint(self):
+        policy = build_evidence_policy("如果只看任務結果，4號和5號為什麼會被視為風險對象？")
+
+        self.assertTrue(policy.result_only)
+
+    def test_result_only_policy_filters_labels_and_keeps_result_fields(self):
+        policy = build_evidence_policy("如果只看任務結果，4號和5號為什麼會被視為風險對象？")
+
+        self.assertFalse(should_include_evidence_line("【API AI 4 / 莫德雷德】", policy))
+        self.assertFalse(should_include_evidence_line("思考：我認為 4 號很可疑", policy))
+        self.assertTrue(should_include_evidence_line("任務：失敗，邪惡方得分", policy))
+        self.assertTrue(should_include_evidence_line("出任務者：API AI 2、API AI 4", policy))
+        self.assertTrue(should_include_evidence_line("失敗牌：API AI 4", policy))
+
+    def test_sequence_number_supports_generic_section_labels(self):
+        self.assertEqual(sequence_number("第12章 / part 2"), 12)
+        self.assertEqual(sequence_number("Phase 3 - rollout"), 3)
+        self.assertEqual(sequence_number("Step 4"), 4)
+
+    def test_event_evidence_gate_accepts_generic_result_fields(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 第2天] 狀態：失敗",
+                "- [來源 1 / 第2天] 負責人：王小明",
+                "- [來源 1 / 第2天] 錯誤原因：付款逾時",
+            ]
+        )
+
+        self.assertTrue(has_answerable_event_evidence("第一次付款失敗是哪一天？負責人是誰？", evidence))
+
+    def test_evidence_policy_filters_vote_fields_unless_question_asks_vote(self):
+        team_policy = build_evidence_policy("第一個失敗案件的負責人是誰？")
+        vote_policy = build_evidence_policy("第1次審核誰贊成、誰反對？")
+
+        self.assertFalse(should_include_evidence_line("贊成：王小明、陳小華", team_policy))
+        self.assertTrue(should_include_evidence_line("贊成：王小明、陳小華", vote_policy))
+
+    def test_parse_entity_existence_query_reads_numbered_entity_type(self):
+        parsed = parse_entity_existence_query("這場對局有6號玩家參與嗎？")
+
+        self.assertEqual(parsed.entity_type, "玩家")
+        self.assertEqual(parsed.target_number, 6)
+        self.assertEqual(parsed.target_label, "6號玩家")
+
+    def test_parse_entity_existence_query_ignores_sequence_questions(self):
+        self.assertIsNone(parse_entity_existence_query("第1輪隊伍為什麼沒有通過？誰支持、誰反對？"))
+        self.assertIsNone(parse_entity_existence_query("第5輪的1、3任務結果是什麼？這對後續判斷有什麼影響？"))
+        self.assertIsNone(parse_entity_existence_query("第6輪2、4、5隊伍為什麼沒有通過？"))
+
+    def test_extract_entity_numbers_ignores_sequence_numbers_in_source_labels(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 第6輪 / part 2] 【API AI 1 / 梅林】",
+                "- [來源 1 / 第6輪 / part 2] 【API AI 2 / 派西維爾】",
+                "- [來源 1 / 第6輪 / part 2] 【API AI 5 / 刺客】",
+            ]
+        )
+
+        self.assertEqual(extract_entity_numbers(evidence, "玩家"), [1, 2, 5])
+
+    def test_answer_entity_existence_returns_negative_from_observed_entities(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 第6輪 / part 2] 【API AI 1 / 梅林】",
+                "- [來源 1 / 第6輪 / part 2] 【API AI 2 / 派西維爾】",
+                "- [來源 1 / 第6輪 / part 2] 【API AI 3 / 忠臣】",
+                "- [來源 1 / 第6輪 / part 2] 【API AI 4 / 莫德雷德】",
+                "- [來源 1 / 第6輪 / part 2] 【API AI 5 / 刺客】",
+            ]
+        )
+
+        answer = answer_entity_existence("這場對局有6號玩家參與嗎？", evidence)
+
+        self.assertIn("無法從來源確認有6號玩家參與", answer)
+        self.assertIn("1、2、3、4、5", answer)
+        self.assertNotIn("第6輪", answer)
+
+    def test_answer_action_result_does_not_infer_success_from_action_only(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 第8輪] 刺殺：刺殺座位 5",
+                "- [來源 1 / 第8輪] 任務：成功，正義方得分",
+            ]
+        )
+
+        answer = answer_action_result("最後刺客刺殺了誰？資料中能不能確認刺殺是否成功？", evidence)
+
+        self.assertIn("刺殺座位 5", answer)
+        self.assertIn("無法從來源確認刺殺是否成功", answer)
+        self.assertNotIn("刺殺成功", answer)
+
+    def test_find_event_list_chunks_returns_all_matching_result_events(self):
+        chunks = [
+            {
+                "id": "event-3",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第3天",
+                "content": "狀態：失敗\n負責人：陳小華\n錯誤原因：資料逾時",
+            },
+            {
+                "id": "event-1",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第1天",
+                "content": "狀態：成功\n負責人：王小明",
+            },
+            {
+                "id": "event-2",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第2天",
+                "content": "狀態：失敗\n負責人：林小美\n錯誤原因：付款逾時",
+            },
+        ]
+
+        results = find_event_list_chunks("哪些事件失敗？各自負責人是誰？", chunks)
+
+        self.assertEqual([chunk["title"] for chunk in results], ["第2天", "第3天"])
+
+    def test_find_event_list_chunks_ignores_zero_failure_detail_rows(self):
+        chunks = [
+            {
+                "id": "success-event",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第1天",
+                "content": "狀態：成功\n處理明細：失敗項目 0 個",
+            },
+            {
+                "id": "failed-event",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第2天",
+                "content": "狀態：失敗\n處理明細：付款逾時",
+            },
+        ]
+
+        results = find_event_list_chunks("哪些事件失敗？", chunks)
+
+        self.assertEqual([chunk["title"] for chunk in results], ["第2天"])
+
+    def test_find_result_constrained_chunks_uses_structured_result_evidence_for_targets(self):
+        chunks = [
+            {
+                "id": "event-1",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第1天",
+                "content": "角色：審核人\n任務：成功\n負責人：API AI 1",
+            },
+            {
+                "id": "event-2",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第2天",
+                "content": "【API AI 4 / 申請人】\n任務：失敗\n負責人：API AI 4\n錯誤原因：文件逾期",
+            },
+            {
+                "id": "event-3",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "第3天",
+                "content": "【API AI 5 / 申請人】\n任務：失敗\n負責人：API AI 5\n錯誤原因：金額不符",
+            },
+        ]
+
+        results = find_result_constrained_chunks("如果只看任務結果，4號和5號為什麼會被視為風險對象？", chunks)
+
+        self.assertEqual([chunk["title"] for chunk in results], ["第2天", "第3天"])
+
+    def test_find_result_constrained_chunks_matches_generic_numbered_labels(self):
+        chunks = [
+            {
+                "id": "case-1",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "Step 1",
+                "content": "Result: failed\nOwner: Agent 4\nFailure detail: timeout",
+            },
+            {
+                "id": "case-2",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "Step 2",
+                "content": "Result: failed\nOwner: Service 5\nFailure detail: rejected",
+            },
+            {
+                "id": "case-3",
+                "source": "ops.md",
+                "parent_title": "事件紀錄",
+                "title": "Step 3",
+                "content": "Result: completed\nOwner: Agent 6",
+            },
+        ]
+
+        results = find_result_constrained_chunks("only use result evidence: why are 4 and 5 risky?", chunks)
+
+        self.assertEqual([chunk["title"] for chunk in results], ["Step 1", "Step 2"])
+
+    def test_merge_event_list_chunks_places_structured_matches_first(self):
+        vector_results = [
+            {"id": "event-8", "title": "第8天", "source": "ops.md", "content": "狀態：成功"},
+            {"id": "event-2", "title": "第2天", "source": "ops.md", "content": "狀態：失敗"},
+        ]
+        event_results = [
+            {"id": "event-2", "title": "第2天", "source": "ops.md", "content": "狀態：失敗"},
+            {"id": "event-3", "title": "第3天", "source": "ops.md", "content": "狀態：失敗"},
+        ]
+
+        merged = merge_event_list_chunks(event_results, vector_results)
+
+        self.assertEqual([chunk["id"] for chunk in merged], ["event-2", "event-3", "event-8"])
+
+    def test_build_deterministic_context_summary_orders_first_event_by_chronology(self):
+        summary = build_deterministic_context_summary(
+            [
+                {
+                    "source": "avalon.txt",
+                    "title": "第3輪 / part 3",
+                    "content": "任務：失敗，邪惡方得分\n出任務者：API AI 1、API AI 3、API AI 5\n失敗牌：API AI 5",
+                },
+                {
+                    "source": "avalon.txt",
+                    "title": "第2輪 / part 3",
+                    "content": "任務：失敗，邪惡方得分\n出任務者：API AI 2、API AI 4\n失敗牌：API AI 4",
+                },
+            ],
+            question="第一個任務失敗是第幾輪？隊伍是誰？誰出了失敗牌？",
+        )
+
+        self.assertLess(summary.index("第2輪 / part 3"), summary.index("第3輪 / part 3"))
+        self.assertLess(summary.index("出任務者：API AI 2、API AI 4"), summary.index("出任務者：API AI 1、API AI 3、API AI 5"))
+        self.assertIn("[來源 2 / 第2輪 / part 3] 任務：失敗", summary)
+
+    def test_extract_deterministic_evidence_prioritizes_task_fields_for_task_questions(self):
+        evidence = extract_deterministic_evidence(
+            [
+                {
+                    "source": "avalon.txt",
+                    "title": "第2輪 / part 3",
+                    "content": "【API AI 4 / 莫德雷德】\n任務：失敗，邪惡方得分\n失敗牌：API AI 4",
+                }
+            ],
+            question="第一個任務失敗是第幾輪？誰出了失敗牌？",
+        )
+
+        self.assertLess(evidence.index("任務：失敗"), evidence.index("【API AI 4 / 莫德雷德】"))
+
+    def test_extract_deterministic_evidence_deduplicates_structured_labels(self):
+        evidence = extract_deterministic_evidence(
+            [
+                {
+                    "source": "avalon.txt",
+                    "title": "第1輪",
+                    "content": "【API AI 1 / 梅林】\n【API AI 2 / 派西維爾】",
+                },
+                {
+                    "source": "avalon.txt",
+                    "title": "第2輪",
+                    "content": "【API AI 1 / 梅林】\n狀態：已核准",
+                },
+            ]
+        )
+
+        self.assertEqual(evidence.count("【API AI 1 / 梅林】"), 1)
+        self.assertIn("【API AI 2 / 派西維爾】", evidence)
+        self.assertIn("狀態：已核准", evidence)
+
+    def test_extract_deterministic_evidence_prioritizes_slash_labels(self):
+        evidence = extract_deterministic_evidence(
+            [
+                {
+                    "source": "avalon.txt",
+                    "title": "第1輪",
+                    "content": "任務：成功\n【邪惡方私下頻道】\n【API AI 4 / 莫德雷德】",
+                }
+            ]
+        )
+
+        self.assertLess(evidence.index("【API AI 4 / 莫德雷德】"), evidence.index("任務：成功"))
+
+    def test_extract_deterministic_evidence_ignores_narrative_colon_lines(self):
+        evidence = extract_deterministic_evidence(
+            [
+                {
+                    "source": "avalon.txt",
+                    "title": "第7輪",
+                    "content": "我補一句：這段只是發言內容，不是結構化欄位。\n【API AI 4 / 莫德雷德】",
+                }
+            ]
+        )
+
+        self.assertIn("【API AI 4 / 莫德雷德】", evidence)
+        self.assertNotIn("我補一句", evidence)
+
+    def test_answer_prompt_uses_summary_without_full_sources_when_summary_exists(self):
+        prompt = build_answer_prompt(
+            "這場對局每位玩家的角色分別是什麼？",
+            [{"source": "avalon.txt", "title": "第1輪", "content": "【API AI 1 / 梅林】"}],
+            context_summary="直接 evidence：API AI 1 / 梅林",
+        )
+
+        self.assertIn("## 彙整資料", prompt)
+        self.assertIn("直接 evidence：API AI 1 / 梅林", prompt)
+        self.assertNotIn("## 檢索資料", prompt)
+        self.assertNotIn("內容：", prompt)
+        self.assertIn("請根據以下彙整資料回答", prompt)
+        self.assertIn("程式抽取 evidence 的優先級高於 Summary Agent 補充整理", prompt)
+        self.assertIn("名單、身份、欄位值或對照關係", prompt)
+        self.assertIn("最高優先", prompt)
+
+    def test_answer_prompt_distinguishes_action_from_success_result(self):
+        prompt = build_answer_prompt(
+            "最後刺客刺殺了誰？資料中能不能確認刺殺是否成功？",
+            [{"source": "avalon.txt", "title": "第8輪", "content": "刺殺：刺殺座位 5"}],
+            context_summary="- [來源 1 / 第8輪] 刺殺：刺殺座位 5",
+        )
+
+        self.assertIn("動作發生不等於結果成功", prompt)
+        self.assertIn("來源只提到動作", prompt)
 
     def test_answer_question_default_top_k_is_three(self):
         signature = inspect.signature(answer_question)
@@ -315,14 +801,19 @@ class RagPipelineTest(unittest.TestCase):
                 "query_rewrite": 1.2,
                 "retrieval": 0.2,
                 "verifier": 1.5,
+                "context_summary": 1.8,
                 "answer_generation": 2.3,
                 "total": 5.21,
             },
+            context_summary="直接 evidence：1號是梅林。",
         )
 
+        self.assertIn("彙整資料：", output)
+        self.assertIn("直接 evidence：1號是梅林。", output)
         self.assertIn("節點耗時：", output)
         self.assertIn("load_index: 0.01s", output)
         self.assertIn("query_rewrite: 1.20s", output)
+        self.assertIn("context_summary: 1.80s", output)
         self.assertIn("answer_generation: 2.30s", output)
         self.assertIn("total: 5.21s", output)
 
@@ -456,12 +947,198 @@ class RagPipelineTest(unittest.TestCase):
 
         prompt = build_verifier_prompt("公司有規定最低學歷嗎", results)
 
-        self.assertIn("驗證輸入問題和 retrieval chunks 的關聯性", prompt)
-        self.assertIn("is_related", prompt)
+        self.assertIn("驗證 retrieval chunks 是否包含足夠 evidence", prompt)
+        self.assertIn("is_answerable", prompt)
         self.assertIn("無正確來源資料", prompt)
         self.assertIn("公司有規定最低學歷嗎", prompt)
 
+    def test_verifier_prompt_requires_evidence_aware_schema(self):
+        prompt = build_verifier_prompt(
+            "這場對局每位玩家的角色分別是什麼？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第1輪 / part 1",
+                    "content": "【API AI 1 / 梅林】\n【API AI 2 / 派西維爾】",
+                }
+            ],
+        )
+
+        self.assertIn("先找 evidence", prompt)
+        self.assertIn("is_answerable", prompt)
+        self.assertIn("evidence_spans", prompt)
+        self.assertIn("標題", prompt)
+        self.assertIn("列表", prompt)
+        self.assertIn("metadata", prompt)
+        self.assertIn("角色標籤", prompt)
+
+    def test_verifier_prompt_can_include_deterministic_evidence(self):
+        prompt = build_verifier_prompt(
+            "第一個任務失敗是第幾輪？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第2輪 / part 3",
+                    "content": "本輪統計：\n任務：失敗，邪惡方得分\n出任務者：API AI 2、API AI 4\n失敗牌：API AI 4",
+                }
+            ],
+            evidence_summary="## 程式抽取 evidence\n- [來源 1 / 第2輪 / part 3] 任務：失敗，邪惡方得分",
+        )
+
+        self.assertIn("deterministic evidence", prompt)
+        self.assertIn("任務：失敗，邪惡方得分", prompt)
+        self.assertLess(prompt.index("deterministic evidence："), prompt.rindex("retrieval chunks："))
+
+    def test_verify_retrieval_passes_deterministic_evidence_to_model(self):
+        calls = []
+
+        def fake_ask_model(prompt, **kwargs):
+            calls.append(prompt)
+            return """{
+              "is_answerable": true,
+              "confidence": 0.9,
+              "evidence_spans": ["任務：失敗，邪惡方得分"],
+              "missing_info": [],
+              "reason": "deterministic evidence directly supports the answer"
+            }"""
+
+        verification = verify_retrieval(
+            "這段資料是否提到任務流程？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第2輪 / part 3",
+                    "content": "任務：失敗，邪惡方得分",
+                    "score": 0.5,
+                    "keyword_score": 1.0,
+                    "embedding_score": 0.2,
+                }
+            ],
+            model="fake",
+            ask_model_fn=fake_ask_model,
+            config=RagConfig.from_env(),
+            evidence_summary="## 程式抽取 evidence\n- 流程：任務審核",
+        )
+
+        self.assertEqual(len(calls), 1)
+        self.assertIn("流程：任務審核", calls[0])
+        self.assertTrue(verification["is_answerable"])
+
+    def test_verify_retrieval_auto_accepts_task_result_deterministic_evidence(self):
+        calls = []
+
+        def fake_ask_model(prompt, **kwargs):
+            calls.append(prompt)
+            return "{}"
+
+        verification = verify_retrieval(
+            "第一個任務失敗是第幾輪？隊伍是誰？誰出了失敗牌？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第2輪 / part 3",
+                    "content": "任務：失敗，邪惡方得分\n出任務者：API AI 2、API AI 4\n失敗牌：API AI 4",
+                    "score": 0.5,
+                    "keyword_score": 1.0,
+                    "embedding_score": 0.2,
+                }
+            ],
+            model="fake",
+            ask_model_fn=fake_ask_model,
+            config=RagConfig.from_env(),
+            evidence_summary="\n".join(
+                [
+                    "- [來源 1 / 第2輪 / part 3] 任務：失敗，邪惡方得分",
+                    "- [來源 1 / 第2輪 / part 3] 出任務者：API AI 2、API AI 4",
+                    "- [來源 1 / 第2輪 / part 3] 失敗牌：API AI 4",
+                ]
+            ),
+        )
+
+        self.assertEqual(calls, [])
+        self.assertTrue(verification["is_answerable"])
+        self.assertIn("deterministic_evidence", verification["reason"])
+
+    def test_verify_retrieval_accepts_structured_role_labels_as_evidence(self):
+        calls = []
+
+        def fake_ask_model(prompt, **kwargs):
+            calls.append(prompt)
+            return """{
+              "is_answerable": true,
+              "confidence": 0.9,
+              "evidence_spans": ["【API AI 1 / 梅林】", "【API AI 2 / 派西維爾】"],
+              "missing_info": [],
+              "reason": "角色標籤直接回答問題"
+            }"""
+
+        verification = verify_retrieval(
+            "這場對局每位玩家的角色分別是什麼？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第1輪 / part 1",
+                    "content": "【API AI 1 / 梅林】\n【API AI 2 / 派西維爾】",
+                    "score": 0.61,
+                    "keyword_score": 6.0,
+                    "embedding_score": 0.52,
+                }
+            ],
+            model="fake",
+            ask_model_fn=fake_ask_model,
+            config=RagConfig.from_env(),
+        )
+
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(verification["is_related"])
+        self.assertTrue(verification["is_answerable"])
+        self.assertEqual(verification["evidence_spans"], ["【API AI 1 / 梅林】", "【API AI 2 / 派西維爾】"])
+        self.assertEqual(verification["missing_info"], [])
+
+    def test_extract_evidence_candidates_surfaces_structured_labels_and_table_rows(self):
+        candidates = extract_evidence_candidates(
+            """# 客戶資料
+
+【API AI 1 / 梅林】
+- 狀態：已核准
+| 姓名 | 角色 |
+| 王小明 | 管理員 |
+部門：資料科學
+一般長句內容不應全部放入候選 evidence，避免 prompt 變得太長。
+"""
+        )
+
+        self.assertIn("【API AI 1 / 梅林】", candidates)
+        self.assertIn("- 狀態：已核准", candidates)
+        self.assertIn("| 王小明 | 管理員 |", candidates)
+        self.assertIn("部門：資料科學", candidates)
+        self.assertNotIn("一般長句內容不應全部放入候選 evidence，避免 prompt 變得太長。", candidates)
+
+    def test_verifier_prompt_surfaces_evidence_candidates_before_content(self):
+        prompt = build_verifier_prompt(
+            "這場對局每位玩家的角色分別是什麼？",
+            [
+                {
+                    "source": "avalon.txt",
+                    "parent_title": "阿瓦隆對局紀錄",
+                    "title": "第1輪 / part 1",
+                    "content": "【API AI 1 / 梅林】\n【API AI 2 / 派西維爾】",
+                }
+            ],
+        )
+
+        self.assertIn("evidence 候選：", prompt)
+        self.assertLess(prompt.index("evidence 候選："), prompt.index("內容節錄："))
+        self.assertIn("【API AI 1 / 梅林】", prompt)
+        self.assertIn("【API AI 2 / 派西維爾】", prompt)
+
     def test_verifier_prompt_truncates_long_chunk_content(self):
+        content = ("開頭資訊" * 20) + ("中段資訊" * 100) + ("結尾任務結果：任務：失敗，邪惡方得分" * 5)
         prompt = build_verifier_prompt(
             "第1輪發生什麼事？",
             [
@@ -469,14 +1146,15 @@ class RagPipelineTest(unittest.TestCase):
                     "source": "avalon.txt",
                     "parent_title": "阿瓦隆對局紀錄",
                     "title": "第1輪 / part 1",
-                    "content": "A" * 1000,
+                    "content": content,
                 }
             ],
             context_chars=120,
         )
 
-        self.assertIn("A" * 120, prompt)
-        self.assertNotIn("A" * 300, prompt)
+        self.assertIn("開頭資訊", prompt)
+        self.assertIn("結尾任務結果", prompt)
+        self.assertNotIn("中段資訊" * 20, prompt)
         self.assertIn("內容已截斷", prompt)
 
     def test_assess_retrieval_confidence_auto_accepts_strong_hits(self):
@@ -586,6 +1264,23 @@ class RagPipelineTest(unittest.TestCase):
         self.assertFalse(parsed["is_related"])
         self.assertEqual(parsed["reason"], "chunks do not mention education")
 
+    def test_parse_verifier_output_reads_evidence_aware_json_result(self):
+        parsed = parse_verifier_output(
+            """{
+              "is_answerable": true,
+              "confidence": 0.85,
+              "evidence_spans": ["表格列：A 公司 / 營收 100", "metadata：2026 Q1"],
+              "missing_info": [],
+              "reason": "表格列與 metadata 足以回答"
+            }"""
+        )
+
+        self.assertTrue(parsed["is_related"])
+        self.assertTrue(parsed["is_answerable"])
+        self.assertEqual(parsed["confidence"], 0.85)
+        self.assertEqual(parsed["evidence_spans"][0], "表格列：A 公司 / 營收 100")
+        self.assertEqual(parsed["missing_info"], [])
+
     def test_general_answer_prompt_marks_no_source_and_common_knowledge(self):
         prompt = build_general_answer_prompt("公司有規定最低學歷嗎")
 
@@ -656,8 +1351,10 @@ class RagPipelineTest(unittest.TestCase):
         self.assertIn('method="post" action="/ask" id="ask-form"', html)
         self.assertIn('name="question"', html)
         self.assertIn('name="model"', html)
-        self.assertIn("阿瓦隆對局問題", html)
-        self.assertIn("誰是梅林", html)
+        self.assertIn("Knowledge base question", html)
+        self.assertIn("請根據目前 knowledge base 回答", html)
+        self.assertNotIn("阿瓦隆對局問題", html)
+        self.assertNotIn("誰是梅林", html)
         self.assertIn('name="top_k"', html)
         self.assertIn("ollama:qwen2.5:7b", html)
         self.assertIn("openai:", html)

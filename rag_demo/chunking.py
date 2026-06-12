@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from typing import Dict, List
 
 from rag_demo.config import RagConfig
@@ -78,6 +79,22 @@ def chunk_avalon_record_text(
     chunk_size: int = None,
     chunk_stride: int = None,
 ) -> List[Chunk]:
+    return chunk_sectioned_text(
+        record_text,
+        source=source,
+        parent_title="阿瓦隆對局紀錄",
+        chunk_size=chunk_size,
+        chunk_stride=chunk_stride,
+    )
+
+
+def chunk_sectioned_text(
+    text: str,
+    source: str,
+    parent_title: str = "Sectioned Text",
+    chunk_size: int = None,
+    chunk_stride: int = None,
+) -> List[Chunk]:
     config = RagConfig.from_env()
     chunk_size = chunk_size or config.chunk_size
     chunk_stride = chunk_stride or config.chunk_stride
@@ -86,34 +103,35 @@ def chunk_avalon_record_text(
     current_lines: List[str] = []
     chunk_index = 0
 
-    for line in record_text.splitlines():
+    for line in text.splitlines():
         stripped = line.strip()
-        if stripped.startswith("=== 第") and stripped.endswith("==="):
+        if current_title and _is_delimited_section_footer(stripped):
+            continue
+        if _is_delimited_section_heading(stripped):
             if current_title and current_lines:
                 chunk_index = _append_sized_chunks(
                     chunks,
                     source,
                     chunk_index,
-                    "阿瓦隆對局紀錄",
+                    parent_title,
                     current_title,
                     current_lines,
                     chunk_size,
                     chunk_stride,
                 )
-            current_title = stripped.strip("= ").strip()
+            current_title = _clean_delimited_section_heading(stripped)
             current_lines = []
             continue
 
         if current_title:
-            if not stripped.startswith("=========="):
-                current_lines.append(line)
+            current_lines.append(line)
 
     if current_title and current_lines:
         _append_sized_chunks(
             chunks,
             source,
             chunk_index,
-            "阿瓦隆對局紀錄",
+            parent_title,
             current_title,
             current_lines,
             chunk_size,
@@ -123,21 +141,67 @@ def chunk_avalon_record_text(
     return chunks
 
 
+def chunk_plain_text(
+    text: str,
+    source: str,
+    chunk_size: int = None,
+    chunk_stride: int = None,
+) -> List[Chunk]:
+    config = RagConfig.from_env()
+    chunk_size = chunk_size or config.chunk_size
+    chunk_stride = chunk_stride or config.chunk_stride
+    chunks: List[Chunk] = []
+    _append_sized_chunks(
+        chunks,
+        source,
+        0,
+        "Plain Text",
+        Path(source).name,
+        text.splitlines(),
+        chunk_size,
+        chunk_stride,
+    )
+    return chunks
+
+
 def load_knowledge_base_chunks(kb_dir: Path) -> List[Chunk]:
     config = RagConfig.from_env()
     chunks: List[Chunk] = []
     for path in sorted(kb_dir.glob("*.md")):
         chunks.extend(chunk_markdown(path.read_text(encoding="utf-8"), source=str(path)))
-    for path in sorted(kb_dir.glob("*formatted.txt")):
+    for path in sorted(kb_dir.glob("*.txt")):
+        text = path.read_text(encoding="utf-8")
+        sectioned_chunks = chunk_sectioned_text(
+            text,
+            source=str(path),
+            parent_title=path.stem,
+            chunk_size=config.chunk_size,
+            chunk_stride=config.chunk_stride,
+        )
+        if sectioned_chunks:
+            chunks.extend(sectioned_chunks)
+            continue
         chunks.extend(
-            chunk_avalon_record_text(
-                path.read_text(encoding="utf-8"),
+            chunk_plain_text(
+                text,
                 source=str(path),
                 chunk_size=config.chunk_size,
                 chunk_stride=config.chunk_stride,
             )
         )
     return chunks
+
+
+def _is_delimited_section_heading(line: str) -> bool:
+    return bool(re.match(r"^={3,}\s*\S.*?\s*={3,}$", line))
+
+
+def _is_delimited_section_footer(line: str) -> bool:
+    return bool(re.match(r"^={8,}.*={8,}$", line))
+
+
+def _clean_delimited_section_heading(line: str) -> str:
+    return line.strip("= ").strip()
 
 
 def _make_chunk(

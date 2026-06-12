@@ -222,7 +222,7 @@ def render_home(
       <section>
         <h2>提問</h2>
         <form method="post" action="/ask" id="ask-form">
-          <label for="question">阿瓦隆對局問題</label>
+          <label for="question">Knowledge base question</label>
           <textarea id="question" name="question" autofocus>{escaped_question}</textarea>
           <div class="field">
             <label for="model">模型</label>
@@ -245,9 +245,9 @@ def render_home(
           </button>
         </form>
         <div class="samples">
-          <button class="sample" type="button">誰是梅林？誰是邪惡方？</button>
-          <button class="sample" type="button">第1輪隊伍為什麼沒有通過？</button>
-          <button class="sample" type="button">哪幾輪任務出現失敗？</button>
+          <button class="sample" type="button">請根據目前 knowledge base 回答重點內容有哪些？</button>
+          <button class="sample" type="button">哪些事件或章節提到失敗、異常或風險？</button>
+          <button class="sample" type="button">資料中有哪些來源可以支持這個結論？</button>
         </div>
         <div class="warn">本機模型可能需要幾秒鐘；API 模型需要設定對應 API key。</div>
       </section>

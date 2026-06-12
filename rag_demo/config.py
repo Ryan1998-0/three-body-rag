@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Mapping, Optional
 
 
@@ -106,3 +107,18 @@ def _bool_value(values: Mapping[str, str], key: str, default: bool) -> bool:
     if value is None:
         return default
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def resolve_project_path(
+    env_key: str,
+    default_relative_path: str,
+    env: Optional[Mapping[str, str]] = None,
+    project_root: Optional[Path] = None,
+) -> Path:
+    values = env or os.environ
+    configured = values.get(env_key)
+    if configured:
+        return Path(configured).expanduser()
+
+    root = project_root or Path(__file__).resolve().parents[1]
+    return root / default_relative_path

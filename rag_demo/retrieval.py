@@ -100,6 +100,7 @@ def _score(query: str, query_terms: List[str], haystack: str, haystack_terms: Li
             if phrase in compact_haystack:
                 score += length
 
+    score += _polarity_score(query, haystack)
     return score
 
 
@@ -152,6 +153,43 @@ def _metadata_overlap_score(query: str, metadata_text: str) -> int:
                 score += length
 
     return score
+
+
+def _polarity_score(query: str, haystack: str) -> int:
+    compact_query = re.sub(r"\s+", "", query)
+    compact_haystack = re.sub(r"\s+", "", haystack)
+    score = 0
+
+    if "失敗" in compact_query:
+        if _has_positive_outcome_match(compact_haystack, "失敗"):
+            score += 28
+        elif "失敗" in compact_haystack:
+            score += 6
+        if _has_negated_outcome_match(compact_haystack, "失敗"):
+            score -= 24
+
+    if "成功" in compact_query:
+        if _has_positive_outcome_match(compact_haystack, "成功"):
+            score += 28
+        elif "成功" in compact_haystack:
+            score += 6
+        if _has_negated_outcome_match(compact_haystack, "成功"):
+            score -= 24
+
+    return score
+
+
+def _has_positive_outcome_match(compact_text: str, outcome: str) -> bool:
+    field_names = "結果|狀態|判定|結論|任務|處理狀態"
+    return bool(re.search(rf"({field_names})[:：]{outcome}", compact_text))
+
+
+def _has_negated_outcome_match(compact_text: str, outcome: str) -> bool:
+    if outcome == "失敗":
+        return bool(re.search(r"(失敗\w{0,4}0|0失敗|無失敗|沒有失敗)", compact_text))
+    if outcome == "成功":
+        return bool(re.search(r"(未成功|沒有成功|不成功|成功\w{0,4}0)", compact_text))
+    return False
 
 
 def _cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:

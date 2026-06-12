@@ -154,3 +154,169 @@ OK
 - `RAG_VERIFIER_AUTO_ACCEPT_ENABLED` 預設改為 `false`。
 - 強命中 retrieval 預設仍會進入 Verifier Agent。
 - 若未來只追求 demo 速度，可明確設定 `RAG_VERIFIER_AUTO_ACCEPT_ENABLED=true` 再開啟快速放行。
+
+## 2026-06-11 Answer Quality Test 暫停紀錄
+
+測試問題：
+
+```text
+哪幾輪任務出現失敗？
+```
+
+### 測試 1：修正前，top_k=4
+
+結果：
+
+```text
+檢索來源：
+1. 第8輪 / part 1
+2. 第3輪 / part 1
+3. 第4輪 / part 1
+4. 第8輪 / part 3
+
+Verifier Agent:
+is_related=False
+reason=retrieval chunks 主要描述了阿瓦隆遊戲各輪的對局紀錄，但未直接提到任務失敗的情況。
+
+節點耗時：
+load_index: 0.00s
+query_rewrite: 15.03s
+load_embeddings: 0.00s
+retrieval: 11.52s
+verifier: 19.24s
+general_fallback: 4.89s
+total: 50.68s
+```
+
+品質判斷：
+
+- 不合格。
+- Retrieval 抓到部分相關 chunk，但第8輪 `0 失敗` 被排太前面。
+- Verifier 誤判為無關，導致進入 general fallback。
+
+### 測試 2：修正 Verifier context head/tail 後，top_k=8
+
+結果：
+
+```text
+檢索來源：
+1. 第8輪 / part 1
+2. 第3輪 / part 1
+3. 第4輪 / part 1
+4. 第8輪 / part 3
+5. 第7輪 / part 3
+6. 第8輪 / part 4
+7. 第7輪 / part 1
+8. 第3輪 / part 2
+
+Verifier Agent:
+is_related=False
+reason=retrieval chunks 主要內容集中在阿瓦隆遊戲各輪的對局紀錄，並未提到哪幾輪任務出現失敗。
+
+節點耗時：
+load_index: 0.00s
+query_rewrite: 8.12s
+load_embeddings: 0.00s
+retrieval: 9.31s
+verifier: 35.82s
+general_fallback: 4.96s
+total: 58.22s
+```
+
+品質判斷：
+
+- 仍不合格。
+- Verifier context 截斷改善不足，主要瓶頸轉為 retrieval 排名。
+
+### 測試 3：加入 failure polarity scoring 後，top_k=4
+
+結果：
+
+```text
+檢索來源：
+1. 第2輪 / part 3
+2. 第3輪 / part 1
+3. 第2輪 / part 2
+4. 第3輪 / part 3
+
+Verifier Agent:
+is_related=True
+confidence=0.9
+reason=retrieval chunks 提供了第2輪和第3輪任務失敗的相關資訊，直接支持回答問題。
+
+節點耗時：
+load_index: 0.00s
+query_rewrite: 9.94s
+load_embeddings: 0.00s
+retrieval: 9.11s
+verifier: 18.97s
+answer_generation: 39.55s
+total: 77.57s
+
+模型回答：
+只回答第3輪任務出現失敗，漏掉第2輪。
+```
+
+品質判斷：
+
+- Retrieval 合格，已抓到第2輪與第3輪。
+- Verifier 合格，判定來源可支持回答。
+- Answer Agent 不合格，漏讀第2輪來源。
+
+### 目前暫停點
+
+已完成但尚未提交：
+
+- `rag_demo/retrieval_verifier.py`：Verifier context 截斷改為保留 head + tail，避免漏掉每輪尾端的任務結果。
+- `rag_demo/retrieval.py`：加入 failure / success polarity scoring，降低 `失敗牌 0 張` 被誤排在 `任務：失敗` 前面的機率。
+- `tests/test_rag_pipeline.py`：新增 retrieval 與 verifier regression tests。
+
+目前有一個刻意保留的紅燈測試：
+
+```text
+test_render_retrieved_context_surfaces_key_excerpts_before_full_content
+```
+
+此測試要求 Answer prompt 在完整內容前加入「關鍵摘錄」，把 `任務：失敗` 這類關鍵句先浮出來。尚未實作，下一步可從 `rag_demo/prompting.py` 開始。
+
+## 2026-06-11 Summary Agent 移除主流程後測試
+
+調整：
+
+- 主流程移除 Qwen Summary Agent 呼叫。
+- 改由程式執行 deterministic evidence extraction。
+- `【A / B】` 這類結構化 label 會排序到 evidence 最前面。
+
+測試問題：
+
+```text
+這場對局每位玩家的角色分別是什麼？
+```
+
+結果：
+
+```text
+節點耗時：
+load_index: 0.00s
+query_rewrite: 6.06s
+load_embeddings: 0.00s
+retrieval: 10.94s
+verifier: 27.83s
+deterministic_evidence: 0.00s
+answer_generation: 11.67s
+total: 56.51s
+```
+
+回答品質：
+
+- 正確列出 API AI 1：梅林
+- 正確列出 API AI 2：派西維爾
+- 正確列出 API AI 3：忠臣
+- 正確列出 API AI 4：莫德雷德
+- 正確列出 API AI 5：刺客
+
+比較：
+
+- 使用 Summary Agent 時，最近一次總耗時約 121.97s。
+- 移除 Summary Agent 後，總耗時降至 56.51s。
+- 速度改善約 65.46s。

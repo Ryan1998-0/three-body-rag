@@ -181,7 +181,7 @@ Cloud-native RAG Demo:
 第一版已建立最小可執行流程：
 
 ```text
-data/avalon-game-records/avalon-api-game-record-1781013283232-formatted.txt
+data/raw/*
 → rag_demo.ingest
 → data/index/chunks.json
 → data/index/embeddings.npy
@@ -203,13 +203,19 @@ keyword search + embedding cosine similarity
 
 目前預設回答模型是本機 Ollama 的 `qwen2.5:7b`。現行架構是「同一個 7B 模型，多個 agent 角色」，每個 agent 透過獨立 prompt / system prompt 執行，沒有把所有任務塞進同一個 prompt，也沒有共用 conversation memory。
 
-目前 knowledge base 已從第一版員工手冊切換成阿瓦隆對局紀錄：
+目前 RAG core 預設讀取泛用 knowledge base 目錄：
 
 ```text
-data/avalon-game-records/avalon-api-game-record-1781013283232-formatted.txt
+data/raw/*
 ```
 
-此資料會依「第 N 輪」切成 chunks，適合測試對局推理、隊伍提名、投票、任務結果、角色身份與刺殺紀錄等問題。
+也可以用環境變數切換資料來源，例如使用阿瓦隆 evaluation dataset：
+
+```bash
+RAG_KB_DIR=data/avalon-game-records python3 -m rag_demo.ingest
+```
+
+泛用 loader 支援 Markdown、一般 `.txt`，以及 `=== Section ===` 這類 sectioned text。阿瓦隆對局紀錄只是目前 demo / evaluation 資料，不是核心 pipeline 的假設。
 
 ### Model Provider 切換
 
@@ -246,11 +252,11 @@ ollama:qwen2.5:7b
 CLI 範例：
 
 ```bash
-python3 -m rag_demo.query '誰是梅林？誰是邪惡方？' --model ollama:qwen2.5:7b
-python3 -m rag_demo.query '第1輪隊伍為什麼沒有通過？' --model ollama:llama3.1:8b
-python3 -m rag_demo.query '哪幾輪任務出現失敗？' --model ollama:gemma3:4b
-python3 -m rag_demo.query '刺客最後刺殺了誰？' --model openai:gpt-5.5
-python3 -m rag_demo.query '正義方最後如何收斂到成功隊伍？' --model anthropic:claude-opus-4-1-20250805
+python3 -m rag_demo.query '請根據目前 knowledge base 回答重點內容有哪些？' --model ollama:qwen2.5:7b
+python3 -m rag_demo.query '哪些章節提到失敗、異常或風險？' --model ollama:llama3.1:8b
+python3 -m rag_demo.query '資料中有哪些來源可以支持這個結論？' --model ollama:gemma3:4b
+python3 -m rag_demo.query '這個問題能不能從資料中確認？' --model openai:gpt-5.5
+python3 -m rag_demo.query '請整理相關來源並回答使用者問題。' --model anthropic:claude-opus-4-1-20250805
 ```
 
 網站表單也已新增模型輸入欄位，可以直接輸入 model spec。
@@ -288,11 +294,17 @@ python3 -m pip install -r requirements.txt
 python3 -m rag_demo.ingest
 ```
 
-此指令目前會讀取 `data/avalon-game-records/*formatted.txt`，依阿瓦隆對局輪次切成 chunks，並輸出：
+此指令預設讀取 `data/raw/*`，並輸出：
 
 ```text
 data/index/chunks.json
 data/index/embeddings.npy
+```
+
+若要改用其他 knowledge base：
+
+```bash
+RAG_KB_DIR=data/avalon-game-records python3 -m rag_demo.ingest
 ```
 
 可調整 chunk size / stride 後重建 index：
@@ -304,7 +316,7 @@ RAG_CHUNK_SIZE=1800 RAG_CHUNK_STRIDE=900 python3 -m rag_demo.ingest
 ### 使用 Qwen 查詢
 
 ```bash
-python3 -m rag_demo.query '誰是梅林？誰是邪惡方？'
+python3 -m rag_demo.query '請根據目前 knowledge base 回答重點內容有哪些？'
 ```
 
 預設使用：
@@ -413,7 +425,7 @@ fallback_model = anthropic:claude-opus-4-1-20250805
 
 ### 無相關來源處理
 
-若使用者問題和 knowledge base 無關，例如阿瓦隆對局紀錄沒有提到某個不存在的玩家或外部規則細節，流程會：
+若使用者問題和 knowledge base 無關，例如資料中沒有提到某個不存在的對象或外部規則細節，流程會：
 
 ```text
 retrieval 找到低相關 chunks
