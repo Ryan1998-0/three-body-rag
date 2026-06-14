@@ -1,0 +1,371 @@
+# Direct30 Failure Cause Diagnosis
+
+- Time: 2026-06-15 07:44:07
+- Questions: `C:/Users/g83ej/Documents/Codex/2026-06-07/gpt5-5/outputs/RAG_Project/evals/three_body_qwen/questions_direct30_lenient_20260615.json`
+- Chunks: `C:/Users/g83ej/Documents/Codex/2026-06-07/gpt5-5/outputs/RAG_Project/data/index/chunks.json`
+
+## Method
+
+This report diagnoses whether misses are more likely caused by retrieval or QA/model behavior.
+
+- Scoring uses the initial user10 rule: each criterion is 1 point; criteria with 4+ aliases require at least 2 alias hits.
+- Retrieval ceiling applies the same alias rule to the Top5 retrieved chunks.
+- If Top5 has the criterion but Final Answer misses it, the cause is `qa_underused_retrieved_evidence`.
+- If Top5 misses it but the full KB has aliases for it, the cause is `retrieval_miss_top5`.
+- If neither Top5 nor full KB matches by aliases, the cause is `rubric_or_alias_gap`.
+- Alias checks are a reproducible proxy, not a substitute for manual semantic review.
+
+## Summary
+
+| Mode | Answer Score | Retrieval Ceiling | Answered With Retrieved Evidence | QA Underused Retrieved Evidence | Retrieval Miss Top5 | Rubric/Alias Gap | Answer Hit Without Top5 Alias Evidence |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 原本 keyword query + embedding retrieval | `46 / 90 = 51.1` | `68 / 90 = 75.6` | 42 | 26 | 18 | 0 | 4 |
+| 純 keyword retrieval | `52 / 90 = 57.8` | `76 / 90 = 84.4` | 52 | 24 | 14 | 0 | 0 |
+| hybrid rerank 實驗版 | `60 / 90 = 66.7` | `77 / 90 = 85.6` | 57 | 20 | 10 | 0 | 3 |
+| 已切換後的主流程重跑 | `56 / 90 = 62.2` | `77 / 90 = 85.6` | 53 | 24 | 10 | 0 | 3 |
+
+## Interpretation
+
+- `Retrieval Ceiling - Answer Score` is the recoverable QA/model gap under this alias rubric.
+- `Retrieval Miss Top5` is the clearest retrieval failure bucket.
+- `Rubric/Alias Gap` should be manually inspected because aliases may be too strict or the criterion may require inference rather than exact wording.
+
+## Miss Details
+
+### 原本 keyword query + embedding retrieval
+
+- `D30Q01` answer `1/3`, retrieval ceiling `2/3`: 葉文潔讀完《寂靜的春天》後，對人類之惡得到什麼結論？
+  - `qa_underused_retrieved_evidence`: 提到人類難以靠自身完成道德自覺或改善 (answer hits=[], retrieval hits=['道德自覺', '不可能'], kb hits=['道德自覺', '自身', '改善', '不可能'], required=2)
+  - `retrieval_miss_top5`: 提到需要人類之外的力量 (answer hits=[], retrieval hits=['人類之外'], kb hits=['人類之外', '別的力量', '外力'], required=2)
+  - Top5: 26.無人懺悔 / part 15 | 26.無人懺悔 / part 12 | 2.寂靜的春天兩年以後，大興安嶺。 / part 8 | 2.寂靜的春天兩年以後，大興安嶺。 / part 5 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 11
+- `D30Q02` answer `2/3`, retrieval ceiling `2/3`: 白沐霖拿走葉文潔整理的信件後，造成葉文潔遇到什麼麻煩？
+  - `retrieval_miss_top5`: 提到葉文潔被送去審查、關押或受迫害 (answer hits=[], retrieval hits=[], kb hits=['審查', '監室', '看守', '迫害'], required=2)
+  - Top5: 2.寂靜的春天兩年以後，大興安嶺。 / part 9 | 2.寂靜的春天兩年以後，大興安嶺。 / part 7 | 16.三體問題 / part 1 | 4.三十八年後。 / part 13 | 4.三十八年後。 / part 11
+- `D30Q03` answer `2/3`, retrieval ceiling `3/3`: 葉哲泰在批判會上為什麼不願迎合紅衛兵的指控？
+  - `qa_underused_retrieved_evidence`: 提到葉哲泰堅持科學或物理學立場 (answer hits=[], retrieval hits=['科學', '物理'], kb hits=['科學', '物理', '相對論', '宇宙大爆炸'], required=2)
+  - Top5: 12. 紅岸之二 / part 3 | 1. 瘋狂年代中國，1967年。 / part 1 | 24.叛亂 / part 2 | 文件開頭 / metadata | 4.三十八年後。 / part 5
+- `D30Q04` answer `1/3`, retrieval ceiling `2/3`: 葉文潔第一次進入紅岸基地時，楊衛寧說紅岸是什麼樣的項目？
+  - `qa_underused_retrieved_evidence`: 提到紅岸是大型武器或軍事研究項目 (answer hits=[], retrieval hits=['武器', '軍事'], kb hits=['大型武器', '武器', '軍事', '研究項目'], required=2)
+  - `retrieval_miss_top5`: 提到它的意義可能比原子彈或氫彈更大 (answer hits=[], retrieval hits=['意義'], kb hits=['原子彈', '氫彈', '意義', '更大'], required=2)
+  - Top5: 14. 紅岸之四 / part 1 | 22.紅岸之五 / part 1 | 13. 紅岸之三 / part 1 | 22.紅岸之五 / part 2 | 31.古箏行動 / part 2
+- `D30Q05` answer `2/3`, retrieval ceiling `2/3`: 紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？
+  - `qa_underused_retrieved_evidence`: 提到太陽能放大、增益或反射訊號 (answer hits=['太陽'], retrieval hits=['太陽', '放大', '增益', '反射', '鏡面'], kb hits=['太陽', '放大', '增益', '反射', '鏡面'], required=2)
+  - Top5: 32.監聽員 / part 6 | 22.紅岸之五 / part 7 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 7 | 22.紅岸之五 / part 2 | 22.紅岸之五 / part 6
+- `D30Q06` answer `1/3`, retrieval ceiling `1/3`: 葉文潔回覆三體文明時，說「到這裏來吧」想讓三體文明做什麼？
+  - `retrieval_miss_top5`: 提到她希望外部文明介入、改造或拯救人類 (answer hits=[], retrieval hits=['拯救'], kb hits=['介入', '外部', '改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與她對人類失望有關 (answer hits=['文明'], retrieval hits=['絕望', '人類', '文明'], kb hits=['失望', '絕望', '人類', '文明'], required=2)
+  - Top5: 32.監聽員 / part 3 | 29.地球三體運動 / part 3 | 32.監聽員 / part 8 | 32.監聽員 / part 9 | 29.地球三體運動 / part 1
+- `D30Q07` answer `1/3`, retrieval ceiling `1/3`: 楊冬遺書中最震撼汪淼和丁儀的核心句子是什麼意思？
+  - `retrieval_miss_top5`: 提到物理學從來沒有存在過或物理學不存在 (answer hits=[], retrieval hits=[], kb hits=['物理學從來就沒有存在過', '不存在'], required=1)
+  - `retrieval_miss_top5`: 提到基礎物理或科學信念崩潰 (answer hits=[], retrieval hits=[], kb hits=['物理', '崩潰', '信念'], required=2)
+  - Top5: 12. 紅岸之二 / part 7 | 7.三體。 / part 14 | 8.葉文潔 / part 3 | 3.紅岸之一 / part 6 | 3.紅岸之一 / part 5
+- `D30Q08` answer `0/3`, retrieval ceiling `2/3`: 科學邊界成員認為當代物理學出了什麼問題？
+  - `qa_underused_retrieved_evidence`: 提到物理學或基礎物理出現危機 (answer hits=['物理'], retrieval hits=['物理', '問題'], kb hits=['物理', '危機', '問題'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到實驗結果或科學規律不可靠 (answer hits=['實驗'], retrieval hits=['實驗', '結果', '規律'], kb hits=['實驗', '結果', '規律', '不存在'], required=2)
+  - `retrieval_miss_top5`: 提到科學信念或世界觀動搖 (answer hits=[], retrieval hits=['崩潰'], kb hits=['信念', '崩潰', '世界觀'], required=2)
+  - Top5: 4.三十八年後。 / part 10 | 33.智子 / part 22 | 33.智子 / part 5 | 33.智子 / part 23 | 6.射手和農場主 / part 2
+- `D30Q09` answer `2/3`, retrieval ceiling `3/3`: 汪淼看到倒數計時後，對方想逼他停止哪一類研究？
+  - `qa_underused_retrieved_evidence`: 提到倒數或倒計時 (answer hits=[], retrieval hits=['倒計時', '計時'], kb hits=['倒數', '倒計時', '計時'], required=1)
+  - Top5: 6.射手和農場主 / part 18 | 22.紅岸之五 / part 10 | 4.三十八年後。 / part 11 | 12. 紅岸之二 / part 5 | 25.雷志成、楊衛寧之死 / part 2
+- `D30Q10` answer `2/3`, retrieval ceiling `3/3`: 汪淼和沙瑞山看到的宇宙閃爍，和哪種宇宙背景輻射觀測有關？
+  - `qa_underused_retrieved_evidence`: 提到觀測站、衛星或天文觀測 (answer hits=[], retrieval hits=['觀測', '衛星', '天文'], kb hits=['觀測', '衛星', '天文', '觀測站'], required=2)
+  - Top5: 23.紅岸之六 / part 5 | 9.宇宙閃爍 / part 2 | 9.宇宙閃爍 / part 1 | 9.宇宙閃爍 / part 7 | 9.宇宙閃爍 / part 3
+- `D30Q13` answer `1/3`, retrieval ceiling `1/3`: 三日凌空在三體遊戲中造成什麼後果？
+  - `qa_underused_retrieved_evidence`: 提到世界、文明或大地遭毀滅 (answer hits=[], retrieval hits=['毀滅', '世界', '文明'], kb hits=['毀滅', '世界', '文明', '災難'], required=2)
+  - `retrieval_miss_top5`: 提到酷熱、燃燒或火海 (answer hits=[], retrieval hits=['酷熱'], kb hits=['酷熱', '燃燒', '火海', '烈日'], required=2)
+  - Top5: 7.三體。 / part 5 | 16.三體問題 / part 11 | 33.智子 / part 13 | 18.聚會《三體》 / part 1 | 16.三體問題 / part 5
+- `D30Q14` answer `1/3`, retrieval ceiling `2/3`: 魏成研究三體問題時，為什麼認為它很難得到穩定解？
+  - `retrieval_miss_top5`: 提到運動混沌、無規律或不可預測 (answer hits=[], retrieval hits=[], kb hits=['混沌', '無規律', '不可預測'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到計算、數學或模型 (answer hits=['演算'], retrieval hits=['計算', '數學', '模型', '演算'], kb hits=['計算', '數學', '模型', '演算'], required=2)
+  - Top5: 16.三體問題 / part 11 | 16.三體問題 / part 6 | 16.三體問題 / part 7 | 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 6 | 33.智子 / part 13
+- `D30Q15` answer `2/3`, retrieval ceiling `3/3`: 申玉菲為什麼一直要求魏成繼續研究三體問題？
+  - `qa_underused_retrieved_evidence`: 提到這關係到三體文明或其世界命運 (answer hits=[], retrieval hits=['三體文明', '三體世界', '生存'], kb hits=['三體文明', '三體世界', '命運', '生存'], required=2)
+  - Top5: 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 6 | 16.三體問題 / part 6 | 16.三體問題 / part 7 | 16.三體問題 / part 14 | 33.智子 / part 13
+- `D30Q16` answer `2/3`, retrieval ceiling `2/3`: 三體文明為什麼需要尋找新的生存世界？
+  - `retrieval_miss_top5`: 提到三顆太陽或三體星系不穩定 (answer hits=['三個太陽'], retrieval hits=['三個太陽'], kb hits=['三顆太陽', '三個太陽', '三體星系', '不穩定'], required=2)
+  - Top5: 32.監聽員 / part 8 | 32.監聽員 / part 9 | 29.地球三體運動 / part 3 | 32.監聽員 / part 3 | 29.地球三體運動 / part 1
+- `D30Q17` answer `1/3`, retrieval ceiling `2/3`: 三體艦隊出發前往的目標大致是哪裡？
+  - `retrieval_miss_top5`: 提到距離約四光年 (answer hits=[], retrieval hits=[], kb hits=['四光年', '四五百年'], required=1)
+  - `qa_underused_retrieved_evidence`: 提到艦隊或遠征 (answer hits=['艦隊'], retrieval hits=['艦隊', '遠征', '航程', '啟航'], kb hits=['艦隊', '遠征', '航程', '啟航'], required=2)
+  - Top5: 31.古箏行動 / part 2 | 33.智子 / part 1 | 3.紅岸之一 / part 4 | 33.智子 / part 3 | 29.地球三體運動 / part 2
+- `D30Q19` answer `2/3`, retrieval ceiling `3/3`: 地球三體組織中的降臨派主張什麼？
+  - `qa_underused_retrieved_evidence`: 提到毀滅、懲罰或消滅人類 (answer hits=['人類'], retrieval hits=['毀滅', '消滅', '人類'], kb hits=['毀滅', '懲罰', '消滅', '人類'], required=2)
+  - Top5: 29.地球三體運動 / part 4 | 33.智子 / part 6 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 9 | 33.智子 / part 3 | 33.智子 / part 23
+- `D30Q20` answer `1/3`, retrieval ceiling `2/3`: 地球三體組織中的拯救派希望三體文明帶來什麼？
+  - `retrieval_miss_top5`: 提到希望三體文明改造、拯救或提升人類 (answer hits=['拯救'], retrieval hits=['拯救'], kb hits=['改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到對人類自身改善能力失望 (answer hits=['文明'], retrieval hits=['人類', '自身', '文明'], kb hits=['人類', '失望', '自身', '改善', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 29.地球三體運動 / part 1 | 32.監聽員 / part 8 | 32.監聽員 / part 9
+- `D30Q21` answer `2/3`, retrieval ceiling `2/3`: 伊文斯的物種共產主義核心觀念是什麼？
+  - `retrieval_miss_top5`: 提到所有生命或物種生來平等 (answer hits=['物種'], retrieval hits=['物種'], kb hits=['生命', '物種', '平等', '生來平等'], required=2)
+  - Top5: 26.無人懺悔 / part 18 | 1. 瘋狂年代中國，1967年。 / part 8 | 29.地球三體運動 / part 2 | 2.寂靜的春天兩年以後，大興安嶺。 / part 12 | 29.地球三體運動 / part 1
+- `D30Q22` answer `1/3`, retrieval ceiling `3/3`: 伊文斯為什麼會支持建立第二紅岸基地？
+  - `qa_underused_retrieved_evidence`: 提到他接受葉文潔講述的紅岸和三體世界 (answer hits=['紅岸'], retrieval hits=['葉文潔', '紅岸', '三體世界', '三體'], kb hits=['葉文潔', '紅岸', '三體世界', '三體'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到要與三體文明通訊或支持三體降臨 (answer hits=['第二紅岸'], retrieval hits=['通訊', '三體文明'], kb hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], required=2)
+  - Top5: 22.紅岸之五 / part 1 | 26.無人懺悔 / part 23 | 31.古箏行動 / part 10 | 14. 紅岸之四 / part 1 | 22.紅岸之五 / part 7
+- `D30Q23` answer `1/3`, retrieval ceiling `2/3`: 古箏行動的核心做法是什麼？
+  - `retrieval_miss_top5`: 提到使用納米、奈米或飛刃材料 (answer hits=[], retrieval hits=[], kb hits=['納米', '飛刃', '材料'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到切割審判日號或船體 (answer hits=['審判日'], retrieval hits=['審判日', '船'], kb hits=['審判日', '船', '切割', '割裂'], required=2)
+  - Top5: 12. 紅岸之二 / part 7 | 31.古箏行動 / part 2 | 1. 瘋狂年代中國，1967年。 / part 5 | 1. 瘋狂年代中國，1967年。 / part 7 | 11.三體。墨子。 / part 6
+- `D30Q24` answer `1/3`, retrieval ceiling `2/3`: 審判日號上藏有什麼重要資料？
+  - `retrieval_miss_top5`: 提到三體組織或 ETO 資料 (answer hits=[], retrieval hits=['資料'], kb hits=['地球三體組織', '三體組織', '資料'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到與三體文明通訊或紅岸資料有關 (answer hits=['信息'], retrieval hits=['紅岸', '信息', '資料'], kb hits=['通訊', '三體文明', '紅岸', '信息', '資料'], required=2)
+  - Top5: 31.古箏行動 / part 2 | 11.三體。墨子。 / part 6 | 7.三體。 / part 11 | 22.紅岸之五 / part 4 | 6.射手和農場主 / part 18
+- `D30Q25` answer `1/3`, retrieval ceiling `1/3`: 智子是由什麼改造成的？
+  - `retrieval_miss_top5`: 提到質子 (answer hits=[], retrieval hits=[], kb hits=['質子'], required=1)
+  - `qa_underused_retrieved_evidence`: 提到展開、改造或製造成智能工具 (answer hits=['改造'], retrieval hits=['改造', '計算機'], kb hits=['展開', '改造', '製造', '智能', '計算機'], required=2)
+  - Top5: 23.紅岸之六 / part 1 | 12. 紅岸之二 / part 3 | 18.聚會《三體》 / part 2 | 1. 瘋狂年代中國，1967年。 / part 6 | 1. 瘋狂年代中國，1967年。 / part 8
+- `D30Q27` answer `2/3`, retrieval ceiling `3/3`: 三體文明為什麼要遏制地球文明的科學發展？
+  - `qa_underused_retrieved_evidence`: 提到避免三體艦隊到達時人類已能對抗 (answer hits=['威脅'], retrieval hits=['艦隊', '威脅'], kb hits=['艦隊', '對抗', '威脅', '四百年', '到達'], required=2)
+  - Top5: 32.監聽員 / part 9 | 33.智子 / part 5 | 32.監聽員 / part 8 | 29.地球三體運動 / part 4 | 33.智子 / part 4
+- `D30Q28` answer `1/3`, retrieval ceiling `3/3`: 三體世界中的 1379 號監聽員為什麼要向地球發出警告？
+  - `qa_underused_retrieved_evidence`: 提到他想給地球文明生存機會或拯救地球 (answer hits=[], retrieval hits=['地球文明', '拯救'], kb hits=['地球文明', '機會', '拯救', '保護'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到他不希望三體文明佔領或毀滅地球 (answer hits=['地球'], retrieval hits=['佔領', '毀滅', '地球'], kb hits=['佔領', '毀滅', '入侵', '地球'], required=2)
+  - Top5: 30.兩個質子 / part 1 | 33.智子 / part 1 | 33.智子 / part 3 | 33.智子 / part 14 | 33.智子 / part 2
+- `D30Q29` answer `1/3`, retrieval ceiling `2/3`: 三體元首如何處置發出警告的 1379 號監聽員？
+  - `qa_underused_retrieved_evidence`: 提到元首認定他有罪或是最大罪犯 (answer hits=[], retrieval hits=['有罪'], kb hits=['有罪', '罪犯'], required=1)
+  - `retrieval_miss_top5`: 提到元首讓他自由或活著看到地球失去希望 (answer hits=[], retrieval hits=['懲罰'], kb hits=['自由', '活到', '懲罰'], required=2)
+  - Top5: 12. 紅岸之二 / part 9 | 32.監聽員 / part 10 | 30.兩個質子 / part 2 | 3.紅岸之一 / part 6 | 33.智子 / part 1
+- `D30Q30` answer `0/3`, retrieval ceiling `2/3`: 第一部結尾「你們是蟲子」這句話對人類代表什麼打擊？
+  - `qa_underused_retrieved_evidence`: 提到三體文明或智子向人類傳達訊息 (answer hits=[], retrieval hits=['三體', '信息'], kb hits=['三體', '智子', '信息'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到把人類貶低為蟲子或弱小存在 (answer hits=[], retrieval hits=['蟲子'], kb hits=['蟲子', '渺小'], required=1)
+  - `retrieval_miss_top5`: 提到這對人類信心、尊嚴或抵抗意志造成打擊 (answer hits=[], retrieval hits=[], kb hits=['打擊', '信心', '尊嚴', '絕望'], required=2)
+  - Top5: 30.兩個質子 / part 5 | 18.聚會《三體》 / part 5 | 26.無人懺悔 / part 4 | 31.古箏行動 / part 6 | 32.監聽員 / part 9
+
+### 純 keyword retrieval
+
+- `D30Q01` answer `1/3`, retrieval ceiling `2/3`: 葉文潔讀完《寂靜的春天》後，對人類之惡得到什麼結論？
+  - `qa_underused_retrieved_evidence`: 提到人類難以靠自身完成道德自覺或改善 (answer hits=['道德自覺'], retrieval hits=['道德自覺', '不可能'], kb hits=['道德自覺', '自身', '改善', '不可能'], required=2)
+  - `retrieval_miss_top5`: 提到需要人類之外的力量 (answer hits=[], retrieval hits=['人類之外'], kb hits=['人類之外', '別的力量', '外力'], required=2)
+  - Top5: 2.寂靜的春天兩年以後，大興安嶺。 / part 3 | 2.寂靜的春天兩年以後，大興安嶺。 / part 4 | 2.寂靜的春天兩年以後，大興安嶺。 / part 9 | 2.寂靜的春天兩年以後，大興安嶺。 / part 7 | 2.寂靜的春天兩年以後，大興安嶺。 / part 8
+- `D30Q02` answer `1/3`, retrieval ceiling `1/3`: 白沐霖拿走葉文潔整理的信件後，造成葉文潔遇到什麼麻煩？
+  - `retrieval_miss_top5`: 提到材料被當成政治問題或罪證 (answer hits=[], retrieval hits=[], kb hits=['罪證', '政治', '錯誤', '審查', '反動'], required=2)
+  - `retrieval_miss_top5`: 提到葉文潔被送去審查、關押或受迫害 (answer hits=[], retrieval hits=[], kb hits=['審查', '監室', '看守', '迫害'], required=2)
+  - Top5: 8.葉文潔 / part 1 | 8.葉文潔 / part 2 | 8.葉文潔 / part 3 | 8.葉文潔 / part 4 | 8.葉文潔 / part 5
+- `D30Q05` answer `1/3`, retrieval ceiling `3/3`: 紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？
+  - `qa_underused_retrieved_evidence`: 提到太陽能放大、增益或反射訊號 (answer hits=['太陽'], retrieval hits=['太陽', '反射'], kb hits=['太陽', '放大', '增益', '反射', '鏡面'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與電波、訊號或發射有關 (answer hits=[], retrieval hits=['電波', '發射'], kb hits=['電波', '訊號', '信號', '發射', '無線電'], required=2)
+  - Top5: 3.紅岸之一 / part 1 | 3.紅岸之一 / part 2 | 22.紅岸之五 / part 1 | 30.兩個質子 / part 2 | 14. 紅岸之四 / part 3
+- `D30Q06` answer `0/3`, retrieval ceiling `2/3`: 葉文潔回覆三體文明時，說「到這裏來吧」想讓三體文明做什麼？
+  - `retrieval_miss_top5`: 提到她邀請三體文明來到地球 (answer hits=['三體文明'], retrieval hits=['三體文明'], kb hits=['到這裏來吧', '三體文明'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到她希望外部文明介入、改造或拯救人類 (answer hits=[], retrieval hits=['改造', '拯救'], kb hits=['介入', '外部', '改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與她對人類失望有關 (answer hits=['文明'], retrieval hits=['人類', '文明'], kb hits=['失望', '絕望', '人類', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 26.無人懺悔 / part 22 | 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 14 | 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 15
+- `D30Q07` answer `1/3`, retrieval ceiling `2/3`: 楊冬遺書中最震撼汪淼和丁儀的核心句子是什麼意思？
+  - `qa_underused_retrieved_evidence`: 提到物理學從來沒有存在過或物理學不存在 (answer hits=[], retrieval hits=['不存在'], kb hits=['物理學從來就沒有存在過', '不存在'], required=1)
+  - `retrieval_miss_top5`: 提到基礎物理或科學信念崩潰 (answer hits=['物理'], retrieval hits=['物理'], kb hits=['物理', '崩潰', '信念'], required=2)
+  - Top5: 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 6 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 7 | 5.台 球 / part 4 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 1 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 2
+- `D30Q08` answer `0/3`, retrieval ceiling `2/3`: 科學邊界成員認為當代物理學出了什麼問題？
+  - `qa_underused_retrieved_evidence`: 提到物理學或基礎物理出現危機 (answer hits=['物理'], retrieval hits=['物理', '問題'], kb hits=['物理', '危機', '問題'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到實驗結果或科學規律不可靠 (answer hits=['實驗'], retrieval hits=['實驗', '結果', '不存在'], kb hits=['實驗', '結果', '規律', '不存在'], required=2)
+  - `retrieval_miss_top5`: 提到科學信念或世界觀動搖 (answer hits=[], retrieval hits=[], kb hits=['信念', '崩潰', '世界觀'], required=2)
+  - Top5: 4.三十八年後。 / part 10 | 4.三十八年後。 / part 9 | 4.三十八年後。 / part 11 | 16.三體問題 / part 9 | 16.三體問題 / part 10
+- `D30Q09` answer `2/3`, retrieval ceiling `3/3`: 汪淼看到倒數計時後，對方想逼他停止哪一類研究？
+  - `qa_underused_retrieved_evidence`: 提到倒數或倒計時 (answer hits=[], retrieval hits=['倒計時', '計時'], kb hits=['倒數', '倒計時', '計時'], required=1)
+  - Top5: 6.射手和農場主 / part 17 | 6.射手和農場主 / part 18 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 7 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 8 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 14
+- `D30Q10` answer `2/3`, retrieval ceiling `3/3`: 汪淼和沙瑞山看到的宇宙閃爍，和哪種宇宙背景輻射觀測有關？
+  - `qa_underused_retrieved_evidence`: 提到宇宙背景輻射 (answer hits=[], retrieval hits=['宇宙背景輻射', '背景輻射'], kb hits=['宇宙背景輻射', '背景輻射'], required=1)
+  - Top5: 9.宇宙閃爍 / part 1 | 9.宇宙閃爍 / part 2 | 9.宇宙閃爍 / part 4 | 9.宇宙閃爍 / part 5 | 9.宇宙閃爍 / part 6
+- `D30Q11` answer `1/3`, retrieval ceiling `3/3`: 三體遊戲中的「亂紀元」代表什麼樣的環境狀態？
+  - `qa_underused_retrieved_evidence`: 提到嚴寒、酷熱或文明毀滅 (answer hits=['酷熱'], retrieval hits=['嚴寒', '酷熱'], kb hits=['嚴寒', '酷熱', '毀滅', '災難', '生存'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到脫水或乾倉 (answer hits=[], retrieval hits=['脫水'], kb hits=['脫水', '人干'], required=1)
+  - Top5: 7.三體。 / part 2 | 7.三體。 / part 3 | 7.三體。 / part 4 | 7.三體。 / part 5 | 7.三體。 / part 6
+- `D30Q13` answer `1/3`, retrieval ceiling `3/3`: 三日凌空在三體遊戲中造成什麼後果？
+  - `qa_underused_retrieved_evidence`: 提到世界、文明或大地遭毀滅 (answer hits=['災難'], retrieval hits=['毀滅', '世界', '文明', '災難'], kb hits=['毀滅', '世界', '文明', '災難'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到酷熱、燃燒或火海 (answer hits=[], retrieval hits=['燃燒', '烈日'], kb hits=['酷熱', '燃燒', '火海', '烈日'], required=2)
+  - Top5: 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 1 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 2 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 5 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 6 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 7
+- `D30Q14` answer `1/3`, retrieval ceiling `2/3`: 魏成研究三體問題時，為什麼認為它很難得到穩定解？
+  - `retrieval_miss_top5`: 提到運動混沌、無規律或不可預測 (answer hits=[], retrieval hits=['無規律'], kb hits=['混沌', '無規律', '不可預測'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到計算、數學或模型 (answer hits=[], retrieval hits=['計算', '數學', '模型', '演算'], kb hits=['計算', '數學', '模型', '演算'], required=2)
+  - Top5: 16.三體問題 / part 11 | 16.三體問題 / part 1 | 16.三體問題 / part 5 | 16.三體問題 / part 6 | 16.三體問題 / part 12
+- `D30Q15` answer `2/3`, retrieval ceiling `2/3`: 申玉菲為什麼一直要求魏成繼續研究三體問題？
+  - `retrieval_miss_top5`: 提到這關係到三體文明或其世界命運 (answer hits=[], retrieval hits=[], kb hits=['三體文明', '三體世界', '命運', '生存'], required=2)
+  - Top5: 16.三體問題 / part 1 | 16.三體問題 / part 11 | 16.三體問題 / part 13 | 16.三體問題 / part 14 | 16.三體問題 / part 15
+- `D30Q16` answer `2/3`, retrieval ceiling `2/3`: 三體文明為什麼需要尋找新的生存世界？
+  - `retrieval_miss_top5`: 提到地球、太陽系或新世界 (answer hits=['地球'], retrieval hits=['地球'], kb hits=['地球', '太陽系', '新世界', '艦隊'], required=2)
+  - Top5: 18.聚會《三體》 / part 3 | 18.聚會《三體》 / part 4 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 5 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 6 | 29.地球三體運動 / part 2
+- `D30Q17` answer `2/3`, retrieval ceiling `3/3`: 三體艦隊出發前往的目標大致是哪裡？
+  - `qa_underused_retrieved_evidence`: 提到距離約四光年 (answer hits=[], retrieval hits=['四光年', '四五百年'], kb hits=['四光年', '四五百年'], required=1)
+  - Top5: 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 11 | 26.無人懺悔 / part 22 | 26.無人懺悔 / part 23 | 32.監聽員 / part 9 | 32.監聽員 / part 10
+- `D30Q20` answer `1/3`, retrieval ceiling `2/3`: 地球三體組織中的拯救派希望三體文明帶來什麼？
+  - `retrieval_miss_top5`: 提到希望三體文明改造、拯救或提升人類 (answer hits=['拯救'], retrieval hits=['拯救'], kb hits=['改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到對人類自身改善能力失望 (answer hits=['文明'], retrieval hits=['人類', '自身', '文明'], kb hits=['人類', '失望', '自身', '改善', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 2 | 29.地球三體運動 / part 3 | 29.地球三體運動 / part 1 | 29.地球三體運動 / part 4 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 11
+- `D30Q22` answer `2/3`, retrieval ceiling `3/3`: 伊文斯為什麼會支持建立第二紅岸基地？
+  - `qa_underused_retrieved_evidence`: 提到要與三體文明通訊或支持三體降臨 (answer hits=['第二紅岸'], retrieval hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], kb hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], required=2)
+  - Top5: 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 16 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 17 | 30.兩個質子 / part 1 | 26.無人懺悔 / part 21 | 26.無人懺悔 / part 22
+- `D30Q23` answer `1/3`, retrieval ceiling `2/3`: 古箏行動的核心做法是什麼？
+  - `retrieval_miss_top5`: 提到使用納米、奈米或飛刃材料 (answer hits=[], retrieval hits=['飛刃'], kb hits=['納米', '飛刃', '材料'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到切割審判日號或船體 (answer hits=[], retrieval hits=['審判日', '船', '切割'], kb hits=['審判日', '船', '切割', '割裂'], required=2)
+  - Top5: 31.古箏行動 / part 13 | 31.古箏行動 / part 14 | 31.古箏行動 / part 1 | 31.古箏行動 / part 2 | 31.古箏行動 / part 3
+- `D30Q24` answer `1/3`, retrieval ceiling `1/3`: 審判日號上藏有什麼重要資料？
+  - `retrieval_miss_top5`: 提到三體組織或 ETO 資料 (answer hits=[], retrieval hits=[], kb hits=['地球三體組織', '三體組織', '資料'], required=2)
+  - `retrieval_miss_top5`: 提到與三體文明通訊或紅岸資料有關 (answer hits=['信息'], retrieval hits=['信息'], kb hits=['通訊', '三體文明', '紅岸', '信息', '資料'], required=2)
+  - Top5: 31.古箏行動 / part 1 | 31.古箏行動 / part 2 | 31.古箏行動 / part 3 | 31.古箏行動 / part 4 | 31.古箏行動 / part 5
+- `D30Q26` answer `2/3`, retrieval ceiling `3/3`: 智子如何干擾地球的基礎科學？
+  - `qa_underused_retrieved_evidence`: 提到干擾粒子加速器或高能物理實驗 (answer hits=['干擾'], retrieval hits=['加速器', '粒子', '干擾'], kb hits=['加速器', '高能', '粒子', '實驗', '撞擊'], required=2)
+  - Top5: 33.智子 / part 3 | 33.智子 / part 4 | 13. 紅岸之三 / part 1 | 10. 大史 / part 5 | 10. 大史 / part 6
+- `D30Q28` answer `2/3`, retrieval ceiling `3/3`: 三體世界中的 1379 號監聽員為什麼要向地球發出警告？
+  - `qa_underused_retrieved_evidence`: 提到他想給地球文明生存機會或拯救地球 (answer hits=['地球文明'], retrieval hits=['地球文明', '機會', '拯救'], kb hits=['地球文明', '機會', '拯救', '保護'], required=2)
+  - Top5: 32.監聽員 / part 6 | 32.監聽員 / part 7 | 32.監聽員 / part 9 | 32.監聽員 / part 1 | 32.監聽員 / part 8
+- `D30Q29` answer `1/3`, retrieval ceiling `3/3`: 三體元首如何處置發出警告的 1379 號監聽員？
+  - `qa_underused_retrieved_evidence`: 提到元首認定他有罪或是最大罪犯 (answer hits=[], retrieval hits=['有罪', '罪犯'], kb hits=['有罪', '罪犯'], required=1)
+  - `qa_underused_retrieved_evidence`: 提到元首讓他自由或活著看到地球失去希望 (answer hits=[], retrieval hits=['自由', '活到', '懲罰'], kb hits=['自由', '活到', '懲罰'], required=2)
+  - Top5: 32.監聽員 / part 6 | 32.監聽員 / part 5 | 32.監聽員 / part 7 | 32.監聽員 / part 9 | 32.監聽員 / part 10
+- `D30Q30` answer `1/3`, retrieval ceiling `2/3`: 第一部結尾「你們是蟲子」這句話對人類代表什麼打擊？
+  - `qa_underused_retrieved_evidence`: 提到三體文明或智子向人類傳達訊息 (answer hits=['三體'], retrieval hits=['三體', '智子', '信息'], kb hits=['三體', '智子', '信息'], required=2)
+  - `retrieval_miss_top5`: 提到這對人類信心、尊嚴或抵抗意志造成打擊 (answer hits=['打擊'], retrieval hits=['尊嚴'], kb hits=['打擊', '信心', '尊嚴', '絕望'], required=2)
+  - Top5: 34.蟲子 / part 3 | 34.蟲子 / part 4 | 34.蟲子 / part 1 | 34.蟲子 / part 2 | 33.智子 / part 22
+
+### hybrid rerank 實驗版
+
+- `D30Q01` answer `2/3`, retrieval ceiling `2/3`: 葉文潔讀完《寂靜的春天》後，對人類之惡得到什麼結論？
+  - `retrieval_miss_top5`: 提到需要人類之外的力量 (answer hits=['人類之外'], retrieval hits=['人類之外'], kb hits=['人類之外', '別的力量', '外力'], required=2)
+  - Top5: 2.寂靜的春天兩年以後，大興安嶺。 / part 4 | 2.寂靜的春天兩年以後，大興安嶺。 / part 3 | 2.寂靜的春天兩年以後，大興安嶺。 / part 8 | 2.寂靜的春天兩年以後，大興安嶺。 / part 5 | 2.寂靜的春天兩年以後，大興安嶺。 / part 7
+- `D30Q02` answer `2/3`, retrieval ceiling `3/3`: 白沐霖拿走葉文潔整理的信件後，造成葉文潔遇到什麼麻煩？
+  - `qa_underused_retrieved_evidence`: 提到葉文潔被送去審查、關押或受迫害 (answer hits=[], retrieval hits=['監室', '看守'], kb hits=['審查', '監室', '看守', '迫害'], required=2)
+  - Top5: 2.寂靜的春天兩年以後，大興安嶺。 / part 9 | 2.寂靜的春天兩年以後，大興安嶺。 / part 8 | 2.寂靜的春天兩年以後，大興安嶺。 / part 7 | 8.葉文潔 / part 1 | 2.寂靜的春天兩年以後，大興安嶺。 / part 10
+- `D30Q05` answer `1/3`, retrieval ceiling `2/3`: 紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？
+  - `qa_underused_retrieved_evidence`: 提到太陽能放大、增益或反射訊號 (answer hits=['太陽'], retrieval hits=['太陽', '放大', '增益', '反射', '鏡面'], kb hits=['太陽', '放大', '增益', '反射', '鏡面'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與電波、訊號或發射有關 (answer hits=['發射'], retrieval hits=['電波', '信號', '發射'], kb hits=['電波', '訊號', '信號', '發射', '無線電'], required=2)
+  - Top5: 22.紅岸之五 / part 1 | 22.紅岸之五 / part 7 | 22.紅岸之五 / part 2 | 3.紅岸之一 / part 1 | 3.紅岸之一 / part 4
+- `D30Q06` answer `1/3`, retrieval ceiling `2/3`: 葉文潔回覆三體文明時，說「到這裏來吧」想讓三體文明做什麼？
+  - `qa_underused_retrieved_evidence`: 提到她希望外部文明介入、改造或拯救人類 (answer hits=[], retrieval hits=['改造', '拯救'], kb hits=['介入', '外部', '改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與她對人類失望有關 (answer hits=['文明'], retrieval hits=['人類', '文明'], kb hits=['失望', '絕望', '人類', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 32.監聽員 / part 8 | 26.無人懺悔 / part 22 | 32.監聽員 / part 3
+- `D30Q07` answer `1/3`, retrieval ceiling `0/3`: 楊冬遺書中最震撼汪淼和丁儀的核心句子是什麼意思？
+  - `retrieval_miss_top5`: 提到物理學從來沒有存在過或物理學不存在 (answer hits=[], retrieval hits=[], kb hits=['物理學從來就沒有存在過', '不存在'], required=1)
+  - `retrieval_miss_top5`: 提到基礎物理或科學信念崩潰 (answer hits=[], retrieval hits=[], kb hits=['物理', '崩潰', '信念'], required=2)
+  - Top5: 34.蟲子 / part 3 | 34.蟲子 / part 4 | 30.兩個質子 / part 2 | 12. 紅岸之二 / part 7 | 4.三十八年後。 / part 3
+- `D30Q08` answer `1/3`, retrieval ceiling `2/3`: 科學邊界成員認為當代物理學出了什麼問題？
+  - `qa_underused_retrieved_evidence`: 提到實驗結果或科學規律不可靠 (answer hits=['實驗'], retrieval hits=['實驗', '結果', '不存在'], kb hits=['實驗', '結果', '規律', '不存在'], required=2)
+  - `retrieval_miss_top5`: 提到科學信念或世界觀動搖 (answer hits=[], retrieval hits=[], kb hits=['信念', '崩潰', '世界觀'], required=2)
+  - Top5: 4.三十八年後。 / part 10 | 4.三十八年後。 / part 9 | 4.三十八年後。 / part 12 | 4.三十八年後。 / part 11 | 4.三十八年後。 / part 1
+- `D30Q09` answer `2/3`, retrieval ceiling `3/3`: 汪淼看到倒數計時後，對方想逼他停止哪一類研究？
+  - `qa_underused_retrieved_evidence`: 提到倒數或倒計時 (answer hits=[], retrieval hits=['倒計時', '計時'], kb hits=['倒數', '倒計時', '計時'], required=1)
+  - Top5: 6.射手和農場主 / part 18 | 33.智子 / part 24 | 6.射手和農場主 / part 17 | 16.三體問題 / part 12 | 7.三體。 / part 1
+- `D30Q10` answer `2/3`, retrieval ceiling `3/3`: 汪淼和沙瑞山看到的宇宙閃爍，和哪種宇宙背景輻射觀測有關？
+  - `qa_underused_retrieved_evidence`: 提到觀測站、衛星或天文觀測 (answer hits=['觀測'], retrieval hits=['觀測', '衛星', '天文', '觀測站'], kb hits=['觀測', '衛星', '天文', '觀測站'], required=2)
+  - Top5: 9.宇宙閃爍 / part 2 | 9.宇宙閃爍 / part 1 | 9.宇宙閃爍 / part 7 | 9.宇宙閃爍 / part 5 | 9.宇宙閃爍 / part 3
+- `D30Q11` answer `2/3`, retrieval ceiling `3/3`: 三體遊戲中的「亂紀元」代表什麼樣的環境狀態？
+  - `qa_underused_retrieved_evidence`: 提到脫水或乾倉 (answer hits=[], retrieval hits=['脫水'], kb hits=['脫水', '人干'], required=1)
+  - Top5: 7.三體。 / part 5 | 32.監聽員 / part 6 | 18.聚會《三體》 / part 3 | 18.聚會《三體》 / part 4 | 33.智子 / part 1
+- `D30Q12` answer `2/3`, retrieval ceiling `3/3`: 三體遊戲中的「恆紀元」對文明有什麼意義？
+  - `qa_underused_retrieved_evidence`: 提到文明可在此時復甦、發展或生活 (answer hits=['文明'], retrieval hits=['文明', '發展', '生活'], kb hits=['文明', '復甦', '發展', '生活', '繁榮'], required=2)
+  - Top5: 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 2 | 7.三體。 / part 8 | 18.聚會《三體》 / part 4 | 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 6 | 32.監聽員 / part 1
+- `D30Q13` answer `2/3`, retrieval ceiling `3/3`: 三日凌空在三體遊戲中造成什麼後果？
+  - `qa_underused_retrieved_evidence`: 提到酷熱、燃燒或火海 (answer hits=[], retrieval hits=['燃燒', '烈日'], kb hits=['酷熱', '燃燒', '火海', '烈日'], required=2)
+  - Top5: 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 5 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 6 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 2 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 1 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 7
+- `D30Q14` answer `2/3`, retrieval ceiling `2/3`: 魏成研究三體問題時，為什麼認為它很難得到穩定解？
+  - `retrieval_miss_top5`: 提到運動混沌、無規律或不可預測 (answer hits=['穩定解'], retrieval hits=['無規律'], kb hits=['混沌', '無規律', '不可預測'], required=2)
+  - Top5: 16.三體問題 / part 6 | 16.三體問題 / part 11 | 16.三體問題 / part 7 | 16.三體問題 / part 5 | 16.三體問題 / part 12
+- `D30Q15` answer `2/3`, retrieval ceiling `2/3`: 申玉菲為什麼一直要求魏成繼續研究三體問題？
+  - `retrieval_miss_top5`: 提到這關係到三體文明或其世界命運 (answer hits=[], retrieval hits=['生存'], kb hits=['三體文明', '三體世界', '命運', '生存'], required=2)
+  - Top5: 16.三體問題 / part 6 | 16.三體問題 / part 7 | 16.三體問題 / part 11 | 16.三體問題 / part 15 | 16.三體問題 / part 1
+- `D30Q16` answer `1/3`, retrieval ceiling `2/3`: 三體文明為什麼需要尋找新的生存世界？
+  - `retrieval_miss_top5`: 提到三顆太陽或三體星系不穩定 (answer hits=[], retrieval hits=['三個太陽'], kb hits=['三顆太陽', '三個太陽', '三體星系', '不穩定'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到地球、太陽系或新世界 (answer hits=['地球'], retrieval hits=['地球', '太陽系', '艦隊'], kb hits=['地球', '太陽系', '新世界', '艦隊'], required=2)
+  - Top5: 32.監聽員 / part 8 | 32.監聽員 / part 9 | 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 32.監聽員 / part 3
+- `D30Q17` answer `1/3`, retrieval ceiling `3/3`: 三體艦隊出發前往的目標大致是哪裡？
+  - `qa_underused_retrieved_evidence`: 提到地球或太陽系 (answer hits=[], retrieval hits=['地球', '太陽系'], kb hits=['地球', '太陽系'], required=1)
+  - `qa_underused_retrieved_evidence`: 提到艦隊或遠征 (answer hits=['艦隊'], retrieval hits=['艦隊', '遠征', '航程', '啟航'], kb hits=['艦隊', '遠征', '航程', '啟航'], required=2)
+  - Top5: 33.智子 / part 1 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 12 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 11 | 26.無人懺悔 / part 23 | 33.智子 / part 3
+- `D30Q20` answer `1/3`, retrieval ceiling `3/3`: 地球三體組織中的拯救派希望三體文明帶來什麼？
+  - `qa_underused_retrieved_evidence`: 提到希望三體文明改造、拯救或提升人類 (answer hits=['拯救'], retrieval hits=['改造', '拯救'], kb hits=['改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到對人類自身改善能力失望 (answer hits=['文明'], retrieval hits=['人類', '自身', '文明'], kb hits=['人類', '失望', '自身', '改善', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 29.地球三體運動 / part 2 | 29.地球三體運動 / part 1 | 30.兩個質子 / part 1
+- `D30Q22` answer `2/3`, retrieval ceiling `3/3`: 伊文斯為什麼會支持建立第二紅岸基地？
+  - `qa_underused_retrieved_evidence`: 提到要與三體文明通訊或支持三體降臨 (answer hits=['第二紅岸'], retrieval hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], kb hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], required=2)
+  - Top5: 30.兩個質子 / part 1 | 30.兩個質子 / part 2 | 26.無人懺悔 / part 22 | 22.紅岸之五 / part 1 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 16
+- `D30Q24` answer `1/3`, retrieval ceiling `1/3`: 審判日號上藏有什麼重要資料？
+  - `retrieval_miss_top5`: 提到三體組織或 ETO 資料 (answer hits=[], retrieval hits=[], kb hits=['地球三體組織', '三體組織', '資料'], required=2)
+  - `retrieval_miss_top5`: 提到與三體文明通訊或紅岸資料有關 (answer hits=['信息'], retrieval hits=['信息'], kb hits=['通訊', '三體文明', '紅岸', '信息', '資料'], required=2)
+  - Top5: 31.古箏行動 / part 2 | 31.古箏行動 / part 7 | 31.古箏行動 / part 1 | 31.古箏行動 / part 8 | 31.古箏行動 / part 6
+- `D30Q27` answer `2/3`, retrieval ceiling `3/3`: 三體文明為什麼要遏制地球文明的科學發展？
+  - `qa_underused_retrieved_evidence`: 提到避免三體艦隊到達時人類已能對抗 (answer hits=[], retrieval hits=['艦隊', '威脅', '到達'], kb hits=['艦隊', '對抗', '威脅', '四百年', '到達'], required=2)
+  - Top5: 33.智子 / part 3 | 33.智子 / part 13 | 33.智子 / part 4 | 33.智子 / part 2 | 33.智子 / part 5
+- `D30Q29` answer `1/3`, retrieval ceiling `3/3`: 三體元首如何處置發出警告的 1379 號監聽員？
+  - `qa_underused_retrieved_evidence`: 提到元首認定他有罪或是最大罪犯 (answer hits=[], retrieval hits=['有罪', '罪犯'], kb hits=['有罪', '罪犯'], required=1)
+  - `qa_underused_retrieved_evidence`: 提到元首讓他自由或活著看到地球失去希望 (answer hits=[], retrieval hits=['自由', '活到', '懲罰'], kb hits=['自由', '活到', '懲罰'], required=2)
+  - Top5: 32.監聽員 / part 10 | 32.監聽員 / part 6 | 32.監聽員 / part 7 | 32.監聽員 / part 9 | 32.監聽員 / part 8
+- `D30Q30` answer `2/3`, retrieval ceiling `2/3`: 第一部結尾「你們是蟲子」這句話對人類代表什麼打擊？
+  - `retrieval_miss_top5`: 提到這對人類信心、尊嚴或抵抗意志造成打擊 (answer hits=['打擊'], retrieval hits=['絕望'], kb hits=['打擊', '信心', '尊嚴', '絕望'], required=2)
+  - Top5: 34.蟲子 / part 3 | 33.智子 / part 24 | 18.聚會《三體》 / part 5 | 30.兩個質子 / part 5 | 34.蟲子 / part 2
+
+### 已切換後的主流程重跑
+
+- `D30Q01` answer `2/3`, retrieval ceiling `2/3`: 葉文潔讀完《寂靜的春天》後，對人類之惡得到什麼結論？
+  - `retrieval_miss_top5`: 提到需要人類之外的力量 (answer hits=[], retrieval hits=['人類之外'], kb hits=['人類之外', '別的力量', '外力'], required=2)
+  - Top5: 2.寂靜的春天兩年以後，大興安嶺。 / part 4 | 2.寂靜的春天兩年以後，大興安嶺。 / part 3 | 2.寂靜的春天兩年以後，大興安嶺。 / part 8 | 2.寂靜的春天兩年以後，大興安嶺。 / part 5 | 2.寂靜的春天兩年以後，大興安嶺。 / part 7
+- `D30Q02` answer `2/3`, retrieval ceiling `3/3`: 白沐霖拿走葉文潔整理的信件後，造成葉文潔遇到什麼麻煩？
+  - `qa_underused_retrieved_evidence`: 提到葉文潔被送去審查、關押或受迫害 (answer hits=[], retrieval hits=['監室', '看守'], kb hits=['審查', '監室', '看守', '迫害'], required=2)
+  - Top5: 2.寂靜的春天兩年以後，大興安嶺。 / part 9 | 2.寂靜的春天兩年以後，大興安嶺。 / part 8 | 2.寂靜的春天兩年以後，大興安嶺。 / part 7 | 8.葉文潔 / part 1 | 2.寂靜的春天兩年以後，大興安嶺。 / part 10
+- `D30Q05` answer `1/3`, retrieval ceiling `2/3`: 紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？
+  - `qa_underused_retrieved_evidence`: 提到太陽能放大、增益或反射訊號 (answer hits=['太陽'], retrieval hits=['太陽', '放大', '增益', '反射', '鏡面'], kb hits=['太陽', '放大', '增益', '反射', '鏡面'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與電波、訊號或發射有關 (answer hits=[], retrieval hits=['電波', '信號', '發射'], kb hits=['電波', '訊號', '信號', '發射', '無線電'], required=2)
+  - Top5: 22.紅岸之五 / part 1 | 22.紅岸之五 / part 7 | 22.紅岸之五 / part 2 | 3.紅岸之一 / part 1 | 3.紅岸之一 / part 4
+- `D30Q06` answer `1/3`, retrieval ceiling `2/3`: 葉文潔回覆三體文明時，說「到這裏來吧」想讓三體文明做什麼？
+  - `qa_underused_retrieved_evidence`: 提到她希望外部文明介入、改造或拯救人類 (answer hits=[], retrieval hits=['改造', '拯救'], kb hits=['介入', '外部', '改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到這與她對人類失望有關 (answer hits=['文明'], retrieval hits=['人類', '文明'], kb hits=['失望', '絕望', '人類', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 32.監聽員 / part 8 | 26.無人懺悔 / part 22 | 32.監聽員 / part 3
+- `D30Q07` answer `1/3`, retrieval ceiling `0/3`: 楊冬遺書中最震撼汪淼和丁儀的核心句子是什麼意思？
+  - `retrieval_miss_top5`: 提到物理學從來沒有存在過或物理學不存在 (answer hits=[], retrieval hits=[], kb hits=['物理學從來就沒有存在過', '不存在'], required=1)
+  - `retrieval_miss_top5`: 提到基礎物理或科學信念崩潰 (answer hits=[], retrieval hits=[], kb hits=['物理', '崩潰', '信念'], required=2)
+  - Top5: 34.蟲子 / part 3 | 34.蟲子 / part 4 | 30.兩個質子 / part 2 | 12. 紅岸之二 / part 7 | 4.三十八年後。 / part 3
+- `D30Q08` answer `0/3`, retrieval ceiling `2/3`: 科學邊界成員認為當代物理學出了什麼問題？
+  - `qa_underused_retrieved_evidence`: 提到物理學或基礎物理出現危機 (answer hits=['物理'], retrieval hits=['物理', '問題'], kb hits=['物理', '危機', '問題'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到實驗結果或科學規律不可靠 (answer hits=['實驗'], retrieval hits=['實驗', '結果', '不存在'], kb hits=['實驗', '結果', '規律', '不存在'], required=2)
+  - `retrieval_miss_top5`: 提到科學信念或世界觀動搖 (answer hits=[], retrieval hits=[], kb hits=['信念', '崩潰', '世界觀'], required=2)
+  - Top5: 4.三十八年後。 / part 10 | 4.三十八年後。 / part 9 | 4.三十八年後。 / part 12 | 4.三十八年後。 / part 11 | 4.三十八年後。 / part 1
+- `D30Q09` answer `2/3`, retrieval ceiling `3/3`: 汪淼看到倒數計時後，對方想逼他停止哪一類研究？
+  - `qa_underused_retrieved_evidence`: 提到倒數或倒計時 (answer hits=[], retrieval hits=['倒計時', '計時'], kb hits=['倒數', '倒計時', '計時'], required=1)
+  - Top5: 6.射手和農場主 / part 18 | 33.智子 / part 24 | 6.射手和農場主 / part 17 | 16.三體問題 / part 12 | 7.三體。 / part 1
+- `D30Q11` answer `1/3`, retrieval ceiling `3/3`: 三體遊戲中的「亂紀元」代表什麼樣的環境狀態？
+  - `qa_underused_retrieved_evidence`: 提到嚴寒、酷熱或文明毀滅 (answer hits=['生存'], retrieval hits=['嚴寒', '酷熱', '毀滅', '生存'], kb hits=['嚴寒', '酷熱', '毀滅', '災難', '生存'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到脫水或乾倉 (answer hits=[], retrieval hits=['脫水'], kb hits=['脫水', '人干'], required=1)
+  - Top5: 7.三體。 / part 5 | 32.監聽員 / part 6 | 18.聚會《三體》 / part 3 | 18.聚會《三體》 / part 4 | 33.智子 / part 1
+- `D30Q12` answer `2/3`, retrieval ceiling `3/3`: 三體遊戲中的「恆紀元」對文明有什麼意義？
+  - `qa_underused_retrieved_evidence`: 提到文明可在此時復甦、發展或生活 (answer hits=['文明'], retrieval hits=['文明', '發展', '生活'], kb hits=['文明', '復甦', '發展', '生活', '繁榮'], required=2)
+  - Top5: 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 2 | 7.三體。 / part 8 | 18.聚會《三體》 / part 4 | 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 6 | 32.監聽員 / part 1
+- `D30Q13` answer `2/3`, retrieval ceiling `3/3`: 三日凌空在三體遊戲中造成什麼後果？
+  - `qa_underused_retrieved_evidence`: 提到酷熱、燃燒或火海 (answer hits=['燃燒'], retrieval hits=['燃燒', '烈日'], kb hits=['酷熱', '燃燒', '火海', '烈日'], required=2)
+  - Top5: 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 5 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 6 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 2 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 1 | 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 7
+- `D30Q14` answer `1/3`, retrieval ceiling `2/3`: 魏成研究三體問題時，為什麼認為它很難得到穩定解？
+  - `retrieval_miss_top5`: 提到運動混沌、無規律或不可預測 (answer hits=['穩定解'], retrieval hits=['無規律'], kb hits=['混沌', '無規律', '不可預測'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到計算、數學或模型 (answer hits=['演算'], retrieval hits=['計算', '數學', '模型', '演算'], kb hits=['計算', '數學', '模型', '演算'], required=2)
+  - Top5: 16.三體問題 / part 6 | 16.三體問題 / part 11 | 16.三體問題 / part 7 | 16.三體問題 / part 5 | 16.三體問題 / part 12
+- `D30Q15` answer `2/3`, retrieval ceiling `2/3`: 申玉菲為什麼一直要求魏成繼續研究三體問題？
+  - `retrieval_miss_top5`: 提到這關係到三體文明或其世界命運 (answer hits=[], retrieval hits=['生存'], kb hits=['三體文明', '三體世界', '命運', '生存'], required=2)
+  - Top5: 16.三體問題 / part 6 | 16.三體問題 / part 7 | 16.三體問題 / part 11 | 16.三體問題 / part 15 | 16.三體問題 / part 1
+- `D30Q16` answer `1/3`, retrieval ceiling `2/3`: 三體文明為什麼需要尋找新的生存世界？
+  - `retrieval_miss_top5`: 提到三顆太陽或三體星系不穩定 (answer hits=[], retrieval hits=['三個太陽'], kb hits=['三顆太陽', '三個太陽', '三體星系', '不穩定'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到地球、太陽系或新世界 (answer hits=['地球'], retrieval hits=['地球', '太陽系', '艦隊'], kb hits=['地球', '太陽系', '新世界', '艦隊'], required=2)
+  - Top5: 32.監聽員 / part 8 | 32.監聽員 / part 9 | 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 32.監聽員 / part 3
+- `D30Q17` answer `2/3`, retrieval ceiling `3/3`: 三體艦隊出發前往的目標大致是哪裡？
+  - `qa_underused_retrieved_evidence`: 提到艦隊或遠征 (answer hits=['艦隊'], retrieval hits=['艦隊', '遠征', '航程', '啟航'], kb hits=['艦隊', '遠征', '航程', '啟航'], required=2)
+  - Top5: 33.智子 / part 1 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 12 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 11 | 26.無人懺悔 / part 23 | 33.智子 / part 3
+- `D30Q20` answer `1/3`, retrieval ceiling `3/3`: 地球三體組織中的拯救派希望三體文明帶來什麼？
+  - `qa_underused_retrieved_evidence`: 提到希望三體文明改造、拯救或提升人類 (answer hits=['拯救'], retrieval hits=['改造', '拯救'], kb hits=['改造', '拯救', '幫助'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到對人類自身改善能力失望 (answer hits=['文明'], retrieval hits=['人類', '自身', '文明'], kb hits=['人類', '失望', '自身', '改善', '文明'], required=2)
+  - Top5: 29.地球三體運動 / part 3 | 29.地球三體運動 / part 4 | 29.地球三體運動 / part 2 | 29.地球三體運動 / part 1 | 30.兩個質子 / part 1
+- `D30Q22` answer `1/3`, retrieval ceiling `3/3`: 伊文斯為什麼會支持建立第二紅岸基地？
+  - `qa_underused_retrieved_evidence`: 提到他接受葉文潔講述的紅岸和三體世界 (answer hits=['紅岸'], retrieval hits=['葉文潔', '紅岸', '三體世界', '三體'], kb hits=['葉文潔', '紅岸', '三體世界', '三體'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到要與三體文明通訊或支持三體降臨 (answer hits=['第二紅岸'], retrieval hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], kb hits=['通訊', '發送', '三體文明', '降臨', '第二紅岸'], required=2)
+  - Top5: 30.兩個質子 / part 1 | 30.兩個質子 / part 2 | 26.無人懺悔 / part 22 | 22.紅岸之五 / part 1 | 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 16
+- `D30Q24` answer `1/3`, retrieval ceiling `1/3`: 審判日號上藏有什麼重要資料？
+  - `retrieval_miss_top5`: 提到三體組織或 ETO 資料 (answer hits=[], retrieval hits=[], kb hits=['地球三體組織', '三體組織', '資料'], required=2)
+  - `retrieval_miss_top5`: 提到與三體文明通訊或紅岸資料有關 (answer hits=['信息'], retrieval hits=['信息'], kb hits=['通訊', '三體文明', '紅岸', '信息', '資料'], required=2)
+  - Top5: 31.古箏行動 / part 2 | 31.古箏行動 / part 7 | 31.古箏行動 / part 1 | 31.古箏行動 / part 8 | 31.古箏行動 / part 6
+- `D30Q26` answer `1/3`, retrieval ceiling `3/3`: 智子如何干擾地球的基礎科學？
+  - `qa_underused_retrieved_evidence`: 提到干擾粒子加速器或高能物理實驗 (answer hits=['干擾'], retrieval hits=['加速器', '高能', '粒子', '實驗', '撞擊', '干擾'], kb hits=['加速器', '高能', '粒子', '實驗', '撞擊'], required=2)
+  - `qa_underused_retrieved_evidence`: 提到阻礙、鎖死或破壞人類基礎科學 (answer hits=['鎖死'], retrieval hits=['鎖死', '破壞', '基礎科學', '物理'], kb hits=['鎖死', '破壞', '基礎科學', '物理'], required=2)
+  - Top5: 33.智子 / part 4 | 33.智子 / part 3 | 33.智子 / part 22 | 33.智子 / part 23 | 33.智子 / part 13
+- `D30Q28` answer `2/3`, retrieval ceiling `3/3`: 三體世界中的 1379 號監聽員為什麼要向地球發出警告？
+  - `qa_underused_retrieved_evidence`: 提到他不希望三體文明佔領或毀滅地球 (answer hits=['地球'], retrieval hits=['佔領', '毀滅', '入侵', '地球'], kb hits=['佔領', '毀滅', '入侵', '地球'], required=2)
+  - Top5: 32.監聽員 / part 6 | 33.智子 / part 14 | 33.智子 / part 13 | 32.監聽員 / part 7 | 32.監聽員 / part 1
+- `D30Q29` answer `1/3`, retrieval ceiling `3/3`: 三體元首如何處置發出警告的 1379 號監聽員？
+  - `qa_underused_retrieved_evidence`: 提到元首認定他有罪或是最大罪犯 (answer hits=[], retrieval hits=['有罪', '罪犯'], kb hits=['有罪', '罪犯'], required=1)
+  - `qa_underused_retrieved_evidence`: 提到元首讓他自由或活著看到地球失去希望 (answer hits=['自由'], retrieval hits=['自由', '活到', '懲罰'], kb hits=['自由', '活到', '懲罰'], required=2)
+  - Top5: 32.監聽員 / part 10 | 32.監聽員 / part 6 | 32.監聽員 / part 7 | 32.監聽員 / part 9 | 32.監聽員 / part 8
+- `D30Q30` answer `2/3`, retrieval ceiling `2/3`: 第一部結尾「你們是蟲子」這句話對人類代表什麼打擊？
+  - `retrieval_miss_top5`: 提到這對人類信心、尊嚴或抵抗意志造成打擊 (answer hits=['打擊'], retrieval hits=['絕望'], kb hits=['打擊', '信心', '尊嚴', '絕望'], required=2)
+  - Top5: 34.蟲子 / part 3 | 33.智子 / part 24 | 30.兩個質子 / part 5 | 18.聚會《三體》 / part 5 | 34.蟲子 / part 2
