@@ -215,7 +215,15 @@ data/raw/*
 RAG_KB_DIR=data/avalon-game-records python3 -m rag_demo.ingest
 ```
 
-泛用 loader 支援 Markdown、一般 `.txt`，以及 `=== Section ===` 這類 sectioned text。阿瓦隆對局紀錄只是目前 demo / evaluation 資料，不是核心 pipeline 的假設。
+泛用 loader 支援 Markdown、一般 `.txt`，以及 `=== Section ===` 這類 sectioned text。事件型資料可使用 `chunk_sectioned_record_text()`，適合對局紀錄、事故處理、客服案件、審核流程、會議決議等分段紀錄。阿瓦隆對局紀錄只是目前 demo / evaluation 資料，不是核心 pipeline 的假設。
+
+之後跑測試請使用：
+
+```bash
+python scripts/run_tests_with_record.py
+```
+
+測試結果會自動寫入 `test-records/`。
 
 ### Model Provider 切換
 

@@ -73,13 +73,29 @@ def load_markdown_chunks(raw_dir: Path) -> List[Chunk]:
     return chunks
 
 
+def chunk_sectioned_record_text(
+    record_text: str,
+    source: str,
+    parent_title: str = "Sectioned Record",
+    chunk_size: int = None,
+    chunk_stride: int = None,
+) -> List[Chunk]:
+    return chunk_sectioned_text(
+        record_text,
+        source=source,
+        parent_title=parent_title,
+        chunk_size=chunk_size,
+        chunk_stride=chunk_stride,
+    )
+
+
 def chunk_avalon_record_text(
     record_text: str,
     source: str,
     chunk_size: int = None,
     chunk_stride: int = None,
 ) -> List[Chunk]:
-    return chunk_sectioned_text(
+    return chunk_sectioned_record_text(
         record_text,
         source=source,
         parent_title="阿瓦隆對局紀錄",
@@ -164,6 +180,71 @@ def chunk_plain_text(
     return chunks
 
 
+def chunk_narrative_text(
+    text: str,
+    source: str,
+    chunk_size: int = None,
+    chunk_stride: int = None,
+) -> List[Chunk]:
+    config = RagConfig.from_env()
+    chunk_size = chunk_size or config.chunk_size
+    chunk_stride = chunk_stride or config.chunk_stride
+    chunks: List[Chunk] = []
+    nonempty_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    front_lines = nonempty_lines[:12]
+    chunk_index = 0
+
+    if front_lines:
+        chunks.append(
+            _make_chunk_from_content(
+                source,
+                chunk_index,
+                "Narrative Text",
+                "文件開頭 / metadata",
+                "\n".join(front_lines),
+            )
+        )
+        chunk_index += 1
+
+    current_title = Path(source).name
+    current_lines: List[str] = []
+    seen_heading = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if _is_narrative_heading(stripped):
+            if seen_heading and current_lines:
+                chunk_index = _append_sized_chunks(
+                    chunks,
+                    source,
+                    chunk_index,
+                    "Narrative Text",
+                    current_title,
+                    current_lines,
+                    chunk_size,
+                    chunk_stride,
+                )
+            current_title = _clean_narrative_heading(stripped)
+            current_lines = []
+            seen_heading = True
+            continue
+        if seen_heading and stripped:
+            current_lines.append(line)
+
+    if seen_heading and current_lines:
+        _append_sized_chunks(
+            chunks,
+            source,
+            chunk_index,
+            "Narrative Text",
+            current_title,
+            current_lines,
+            chunk_size,
+            chunk_stride,
+        )
+
+    return chunks
+
+
 def load_knowledge_base_chunks(kb_dir: Path) -> List[Chunk]:
     config = RagConfig.from_env()
     chunks: List[Chunk] = []
@@ -180,6 +261,16 @@ def load_knowledge_base_chunks(kb_dir: Path) -> List[Chunk]:
         )
         if sectioned_chunks:
             chunks.extend(sectioned_chunks)
+            continue
+        if _has_narrative_headings(text):
+            chunks.extend(
+                chunk_narrative_text(
+                    text,
+                    source=str(path),
+                    chunk_size=config.chunk_size,
+                    chunk_stride=config.chunk_stride,
+                )
+            )
             continue
         chunks.extend(
             chunk_plain_text(
@@ -202,6 +293,28 @@ def _is_delimited_section_footer(line: str) -> bool:
 
 def _clean_delimited_section_heading(line: str) -> str:
     return line.strip("= ").strip()
+
+
+def _has_narrative_headings(text: str) -> bool:
+    return sum(1 for line in text.splitlines() if _is_narrative_heading(line.strip())) >= 2
+
+
+def _is_narrative_heading(line: str) -> bool:
+    if not line:
+        return False
+    if re.match(r"^\d{1,3}[.．]\s*\S.{0,80}$", line):
+        return True
+    if re.match(r"^【[^】]{1,40}】$", line):
+        return True
+    if re.match(r"^第[一二三四五六七八九十百千0-9]+[章節部卷回]\b", line):
+        return True
+    if line in {"序", "序章", "楔子", "前言", "後記", "尾聲", "上部", "中部", "下部", "上卷", "中卷", "下卷"}:
+        return True
+    return False
+
+
+def _clean_narrative_heading(line: str) -> str:
+    return line.strip()
 
 
 def _make_chunk(

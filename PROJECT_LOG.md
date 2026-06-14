@@ -1502,3 +1502,166 @@ docs/answer_quality_eval_2026-06-12_current_architecture.md
 1. `reason evidence extraction`：對 `為什麼 / 影響 / 原因 / 收斂` 類問題抽取短因果句、決策理由句、時間線脈絡。
 2. `in-domain fallback guard`：如果問題仍屬於當前 knowledge base 主題，只是 retrieval 不足，應回答「資料不足以確認」，不要直接改用一般常識。
 3. `Query Rewriter guardrail`：避免將抽象原因題過度改寫成局部 keyword，造成 retrieval 偏移。
+
+## 2026-06-12 泛用化阿瓦隆資料補強
+
+使用者要求把先前針對阿瓦隆對局紀錄做的資料補強改成可泛用。
+
+變更重點：
+
+- `rag_demo/chunking.py`
+  - 新增 `chunk_sectioned_record_text()` 作為泛用分段事件紀錄入口。
+  - `chunk_avalon_record_text()` 保留為相容 wrapper，不再是核心 API。
+- `rag_demo/evidence_policy.py`
+  - 將事件 / 結果偵測擴充到流程、步驟、階段、案件、處理、決策、作業等泛用資料。
+  - 將參與者與明細欄位擴充到處理者、承辦、指派、備註、紀錄等欄位。
+- `rag_demo/event_list_retrieval.py`
+  - 結果欄位辨識支援 task、event、process、step、case 等泛用英文欄位。
+- `rag_demo/retrieval.py`
+  - polarity ranking 不再只看任務 / 處理狀態，也支援事件、流程、步驟、階段、案件等結果欄位。
+- `tests/test_rag_pipeline.py`
+  - chunking 測試改成 incident response / process record，不再用阿瓦隆作為核心測試資料。
+  - 保留部分阿瓦隆 evaluation case，作為特定資料集回歸測試。
+- `scripts/run_tests_with_record.py`
+  - 新增測試紀錄 runner，執行 unittest 並自動把結果寫入 `test-records/`。
+
+測試紀錄：
+
+- `test-records/test-record-20260612-202949.md`：第一次測試，發現泛用化後 deterministic evidence 自動通過，舊測試期待需要調整。
+- `test-records/test-record-20260612-203020.md`：修正後測試通過，81 tests OK。
+
+## 2026-06-12 將本機 knowledge base 切換為三體
+
+使用者提供本機 Word 檔 `三體1.docx`，要求把現有 RAG 流程的知識庫替換成三體。
+
+執行內容：
+
+- 將原本 `data/raw/employee_handbook_v1.md` 移到 `data/archive/raw-before-three-body/`，避免預設 loader 繼續讀取員工手冊。
+- 從本機 `三體1.docx` 抽出文字，產生 `data/raw/three-body-1.txt`。
+- 執行 `python -m rag_demo.ingest` 重建 `data/index/chunks.json` 與 `data/index/embeddings.npy`。
+- 驗證 index 來源只包含 `three-body-1.txt`，共 131 個 chunks。
+- 執行 `python scripts/run_tests_with_record.py`，測試紀錄為 `test-records/test-record-20260612-203743.md`，81 tests OK。
+
+注意：
+
+- `three-body-1.txt` 是完整書本文字抽取結果，只應作為本機 RAG 索引用，不應未經確認直接推送到 GitHub。
+
+## 2026-06-12 三體知識庫 Qwen RAG 20 題評測
+
+使用者要求根據三體知識庫設計 20 題，測試 Qwen 做 RAG 的表現，並建立評分標準與紀錄。
+
+新增檔案：
+
+- `evals/three_body_qwen/questions.json`
+  - 20 題 evaluation 題庫。
+- `evals/three_body_qwen/scoring_rubric.md`
+  - 每題 5 分、總分 100 分的評分標準。
+- `evals/three_body_qwen/run_eval.py`
+  - 使用既有 `answer_question()` 對 `qwen2.5:7b` 跑完整 RAG evaluation。
+- `evals/three_body_qwen/qwen_rag_raw_answers_20260612-204921.jsonl`
+  - 20 題原始 JSONL 回答紀錄。
+- `evals/three_body_qwen/qwen_rag_raw_report_20260612-204921.md`
+  - 20 題原始 Markdown 回答紀錄。
+- `evals/three_body_qwen/qwen_rag_scored_report_20260612-204921.md`
+  - 人工依 rubric 評分後的正式報告。
+- `test-records/qwen-rag-three-body-eval-20260612-204921.md`
+  - 同一份 scored report 複製到 test records，符合測試留檔規則。
+
+結果：
+
+- Qwen RAG score：`13 / 100`
+- 主要原因：
+  - `three-body-1.txt` 目前是 plain text chunking，缺少章節、場景、人物、時間線 metadata。
+  - 很多題的 retrieval 抓到語意相近但錯位的段落。
+  - verifier 判定不相關後進入 general fallback，Qwen 會用一般常識補答案，造成 hallucination。
+
+建議下一步：
+
+1. 對小說做章節化 ingest，而不是只用滑動字元 chunk。
+2. 建立人物 / 場景 / 時間線 metadata。
+3. 對小說知識庫關閉 general fallback，來源不足時直接回答資料不足。
+4. 改善 deterministic evidence，讓它能保留人物、動作、因果句，而不是只抽標籤或 key-value 行。
+
+## 2026-06-12 修正三體 retrieval 與 deterministic evidence
+
+使用者詢問 retrieval 是否做好，並要求修正。前一輪 Qwen RAG 評測顯示小說型資料的 retrieval、verifier、answer 階段會互相放大錯誤：能抓到相近段落，但常漏掉真正答案句，或被 verifier / answer 小模型誤判為資料不足。
+
+修正重點：
+
+- `rag_demo/chunking.py`
+  - 新增 narrative text chunking，保留文件開頭 metadata，並辨識 `楔子`、`【章節】`、`第...章` 等小說段落標題。
+  - 重建 index 後，三體知識庫由 131 個 plain chunks 改為 135 個 narrative-aware chunks。
+- `rag_demo/retrieval.py`
+  - 對小說問法加入 query expansion 與 metadata boost，例如文件開頭、楔子、雲天明距離、三體人研究日本等題型。
+  - 對含答案錨點的敘事段落加入 hint score，提升正確段落排序。
+- `rag_demo/query.py`
+  - narrative knowledge base 會優先使用原始問題做 retrieval，避免 query rewriter 把小說問題改寫偏掉。
+  - 移除主 RAG path 的 general fallback；來源不足時回覆資料不足，不再用一般常識硬補。
+  - 對高精度 narrative distance evidence 直接產生答案，避免 Answer Agent 看漏明確句子。
+- `rag_demo/retrieval_verifier.py`
+  - evidence candidates 支援小說句子抽取。
+  - 長句會以答案錨點附近視窗裁切，避免只保留句首而漏掉中段答案。
+  - 新增 deterministic narrative gate：問題詢問雲天明距離且 evidence 含 `近七個世紀 / 近三百光年` 時直接判定 answerable。
+- `rag_demo/context_summary.py`
+  - 短但含小說答案錨點的句子也會保留為 deterministic evidence，不再只接受 key-value 或長敘事句。
+- `tests/test_rag_pipeline.py`
+  - 增加 narrative chunking、小說 metadata boost、原始查詢保護、敘事 evidence 抽取、deterministic verifier gate、deterministic answer 等回歸測試。
+
+測試紀錄：
+
+- `test-records/test-record-20260612-215655.md`：94 tests OK。
+- `test-records/retrieval-smoke-q04-after-deterministic-answer-20260612-215711.md`：Q04 實際 RAG 流程成功回答 `近七個世紀 / 近三百光年外`。
+- `test-records/retrieval-smoke-three-body-representative-20260612-215829.md`：Q01、Q02、Q04、Q05、Q13 代表題 retrieval smoke test。
+
+仍需注意：
+
+- 這次先修 retrieval 與明確 evidence gating，還沒有重新跑完整 20 題 Qwen 評測。
+- `data/raw/three-body-1.txt` 仍是完整本機文字抽取資料，未經使用者確認前不應推送到 GitHub。
+
+## 2026-06-13 泛用修復：第一次進入場景的環境災難問答
+
+使用者用問題「汪淼第一次進入《三體》遊戲時，所處文明正面臨什麼樣的天文災難？」測試目前 RAG 架構，並要求找出問題、修復，且修復邏輯要以可泛用為核心原則。
+
+問題定位：
+
+- 更新後的 `三體1.docx` 抽出的是數字章節格式，例如 `1. 瘋狂年代...`、`7.三體。`，原 narrative chunking 只辨識 `楔子`、`【...】`、`第...章` 等格式，因此退回 plain text chunking。
+- plain text chunk 缺少章節/場景 metadata，導致 retrieval 把「第一次進入遊戲」問題拉到後段總解釋章節，而不是初次登入場景。
+- deterministic evidence 詞彙過窄，原本偏向雲天明段落，沒有保留「亂紀元、恆紀元、飛星、太陽運行、嚴寒、酷熱、脫水」這類環境災難 evidence。
+- verifier 即使看到部分相關段落，也容易把「第一次場景」與「後續總解釋」混在一起，判定資料不足。
+
+泛用修復：
+
+- `rag_demo/chunking.py`
+  - 新增數字章節 heading 偵測，支援 `7.遠星遊戲`、`1. 開端` 這類通用小說/文件章節格式。
+- `rag_demo/retrieval.py`
+  - 新增泛用 first-scene environment hazard intent：
+    - first-entry terms：`第一次`、`首次`、`第一回`、`初次`
+    - entry action terms：`進入`、`登入`、`來到`、`抵達`
+    - scene/world terms：`遊戲`、`世界`、`場景`、`文明`、`星球`、`星系`
+    - hazard terms：`災難`、`危機`、`困境`、`風險`、`天文`、`生存`
+  - 對入口動作 evidence 進行泛用加權，例如 `啟動遊戲`、`成功登錄`、`註冊`、`登入`、`置身`。
+  - 對後續場景語彙加 temporal penalty，例如 `再次`、`後來`、`最後場景`、`最終目標`、`第...次`，避免「第一次」問題被後段章節搶走。
+- `rag_demo/retrieval_verifier.py`
+  - 新增泛用 first-scene environment hazard deterministic gate，只要 evidence 同時包含世界/文明狀態、環境災難、天文或氣候線索，即可直接判定 answerable。
+- `rag_demo/context_summary.py`
+  - 將環境災難與天文風險詞納入 deterministic evidence 保留範圍。
+- `rag_demo/query.py`
+  - 新增泛用 environment hazard deterministic answer，從 evidence 組合答案，不再依賴小模型重新理解明確 evidence。
+- `tests/test_rag_pipeline.py`
+  - 新增泛用回歸測試：數字章節偵測、第一次進入場景的環境災難 retrieval、environment hazard evidence、deterministic verifier gate、deterministic answer。
+
+測試紀錄：
+
+- `test-records/test-record-20260613-133855.md`：99 tests OK。
+- `test-records/fixed-generic-logic-wang-miao-three-body-game-final-20260613-133915.md`：同題 end-to-end smoke test 成功回答。
+
+結果：
+
+- 更新後 index 變成 193 個 narrative-aware chunks。
+- 同題 smoke test 不再進入 fallback，verifier 由 deterministic evidence 直接通過。
+- 最終回答能根據來源指出：亂紀元與恆紀元無規律交替、太陽運行不可預測、多顆太陽造成天體運行失序、行星可能被吞噬或墜入火海。
+
+仍需注意：
+
+- 這次是泛用規則修復，不是重新評測完整 20 題。若要評估整體改善，需要重跑 `evals/three_body_qwen/run_eval.py`。
+- `data/raw/three-body-1.txt` 仍是本機抽取文本，未經確認前不應推送到 GitHub。

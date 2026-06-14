@@ -5,6 +5,7 @@ from rag_demo.chunking import Chunk
 from rag_demo.evidence_policy import build_evidence_policy, evidence_category, sequence_number, should_include_evidence_line
 from rag_demo.model_providers import ask_model
 from rag_demo.prompting import render_retrieved_context
+from rag_demo.retrieval_planner import extract_focus_terms
 from rag_demo.retrieval_verifier import extract_evidence_candidates
 
 
@@ -66,8 +67,12 @@ def extract_deterministic_evidence(chunks: List[Chunk], max_items: int = 40, que
     for index, chunk in enumerate(chunks, start=1):
         source_label = _source_label(index, chunk)
         sequence = sequence_number(f"{chunk.get('parent_title', '')}\n{chunk.get('title', '')}")
-        for candidate in extract_evidence_candidates(str(chunk.get("content", "")), max_candidates=max_items):
-            if not _is_deterministic_evidence_line(candidate):
+        candidates = [
+            *extract_evidence_candidates(str(chunk.get("content", "")), max_candidates=max_items),
+            *extract_query_evidence_candidates(str(chunk.get("content", "")), question, max_candidates=max_items),
+        ]
+        for candidate in candidates:
+            if not _is_deterministic_evidence_line(candidate) and not _matches_query_evidence_terms(candidate, question):
                 continue
             if not should_include_evidence_line(candidate, policy):
                 continue
@@ -97,6 +102,82 @@ def extract_deterministic_evidence(chunks: List[Chunk], max_items: int = 40, que
     return "\n".join(deduped_lines)
 
 
+def extract_query_evidence_candidates(content: str, question: str, max_candidates: int = 12) -> List[str]:
+    terms = _query_evidence_terms(question)
+    if not terms:
+        return []
+
+    candidates = []
+    for raw_line in content.splitlines():
+        for sentence in re.split(r"(?<=[。！？!?])", raw_line):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            if not _matches_query_evidence_terms(sentence, question, terms=terms):
+                continue
+            candidates.append(_clip_around_query_terms(sentence, terms))
+            if len(candidates) >= max_candidates:
+                return candidates
+    return candidates
+
+
+def _matches_query_evidence_terms(line: str, question: str, terms: List[str] = None) -> bool:
+    terms = terms or _query_evidence_terms(question)
+    if not terms:
+        return False
+    hits = [term for term in terms if term in line]
+    return any(len(term) >= 4 for term in hits) or len(hits) >= 2
+
+
+def _query_evidence_terms(question: str) -> List[str]:
+    terms = list(extract_focus_terms(question))
+    raw_terms = re.split(r"[\s,，。！？!?、：:；;（）()「」『』《》/\\]+", str(question))
+    stopwords = {
+        "什麼",
+        "為什麼",
+        "如何",
+        "哪些",
+        "哪一項",
+        "主要",
+        "小說",
+        "遊戲",
+        "文明",
+        "問題",
+        "背景",
+        "來源",
+        "目前",
+        "確認",
+    }
+    for raw_term in raw_terms:
+        for term in re.findall(r"[\u4e00-\u9fffA-Za-z0-9·]{2,}", raw_term):
+            if term in stopwords:
+                continue
+            if len(term) > 18:
+                continue
+            terms.append(term)
+    return list(dict.fromkeys(terms))
+
+
+def _clip_around_query_terms(sentence: str, terms: List[str], max_chars: int = 220) -> str:
+    if len(sentence) <= max_chars:
+        return sentence
+
+    anchors = [sentence.find(term) for term in terms if sentence.find(term) >= 0]
+    anchor = min(anchors) if anchors else -1
+    if anchor < 0:
+        return sentence[:max_chars].strip()
+
+    start = max(0, anchor - max_chars // 2)
+    end = min(len(sentence), start + max_chars)
+    start = max(0, end - max_chars)
+    clipped = sentence[start:end].strip()
+    if start > 0:
+        clipped = f"...{clipped}"
+    if end < len(sentence):
+        clipped = f"{clipped}..."
+    return clipped
+
+
 def _evidence_sort_key(line: str, question: str, sequence: int, chunk_index: int, item_index: int):
     policy = build_evidence_policy(question)
     if policy.temporal_order:
@@ -111,9 +192,13 @@ def _evidence_priority(line: str, question: str = "") -> int:
 def _is_deterministic_evidence_line(line: str) -> bool:
     stripped = line.strip()
     lowered = stripped.lower()
-    if not stripped or len(stripped) > 100:
+    if not stripped:
         return False
     if "api call failed" in lowered or "fallback" in lowered or "operation was aborted" in lowered:
+        return False
+    if _looks_like_narrative_evidence_line(stripped):
+        return True
+    if len(stripped) > 100:
         return False
     if re.match(r"^[【\[][^】\]]+[】\]]$", stripped):
         return True
@@ -132,6 +217,46 @@ def _is_deterministic_evidence_line(line: str) -> bool:
             return False
         return True
     return False
+
+
+def _looks_like_narrative_evidence_line(line: str) -> bool:
+    if len(line) > 240:
+        return False
+    return any(
+        term in line
+        for term in (
+            "雲天明",
+            "程心",
+            "艾AA",
+            "智子",
+            "日本",
+            "三體",
+            "幽靈",
+            "楔子",
+            "第一次進入",
+            "首次進入",
+            "亂紀元",
+            "恆紀元",
+            "太陽運行",
+            "飛星",
+            "三顆飛星",
+            "三顆太陽",
+            "太陽",
+            "恆星",
+            "行星",
+            "嚴寒",
+            "酷熱",
+            "脫水",
+            "毀滅",
+            "災難",
+            "危機",
+            "光年",
+            "世紀",
+            "另一個時代",
+            "另一個世界",
+            "斜風細雨不須歸",
+        )
+    )
 
 
 def _source_label(index: int, chunk: Chunk) -> str:

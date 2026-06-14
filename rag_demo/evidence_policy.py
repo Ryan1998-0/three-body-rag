@@ -18,10 +18,56 @@ def build_evidence_policy(question: str) -> EvidencePolicy:
     return EvidencePolicy(
         temporal_order=_has_any(question, ("第一個", "第一次", "最早", "最先", "首次", "first", "earliest")),
         event_list=_has_any(question, ("哪幾", "哪些", "所有", "列出", "全部", "幾次", "幾個", "which", "list all")),
-        event_or_result_question=_has_any(question, ("結果", "狀態", "成功", "失敗", "通過", "未通過", "異常", "錯誤", "完成", "任務", "事件")),
+        event_or_result_question=_has_any(
+            question,
+            (
+                "結果",
+                "狀態",
+                "成功",
+                "失敗",
+                "通過",
+                "未通過",
+                "異常",
+                "錯誤",
+                "完成",
+                "任務",
+                "事件",
+                "流程",
+                "步驟",
+                "階段",
+                "案件",
+                "處理",
+                "決策",
+                "作業",
+                "task",
+                "event",
+                "case",
+                "process",
+                "step",
+            ),
+        ),
         result_only=_has_result_only_constraint(question),
-        asks_participant=_has_any(question, ("誰", "哪位", "成員", "參與者", "負責", "執行", "隊伍", "人員", "player", "member", "owner")),
-        asks_outcome_detail=_has_any(question, ("原因", "為什麼", "怎麼", "失敗", "成功", "異常", "錯誤", "責任", "明細", "detail")),
+        asks_participant=_has_any(
+            question,
+            (
+                "誰",
+                "哪位",
+                "成員",
+                "參與者",
+                "負責",
+                "執行",
+                "隊伍",
+                "人員",
+                "處理者",
+                "指派",
+                "承辦",
+                "player",
+                "member",
+                "owner",
+                "assignee",
+            ),
+        ),
+        asks_outcome_detail=_has_any(question, ("原因", "為什麼", "怎麼", "失敗", "成功", "異常", "錯誤", "責任", "明細", "細節", "detail", "reason")),
         asks_vote=_has_any(question, ("投票", "支持", "贊成", "反對", "同意", "不同意", "vote", "approve", "reject")),
     )
 
@@ -114,7 +160,7 @@ def split_key_value(line: str):
 def is_result_field(key: str, value: str) -> bool:
     return _has_any(
         key,
-        ("結果", "狀態", "判定", "結論", "任務", "result", "status", "outcome"),
+        ("結果", "狀態", "判定", "結論", "任務", "事件", "流程", "步驟", "階段", "案件", "處理狀態", "result", "status", "outcome"),
     ) or _has_any(
         value,
         ("成功", "失敗", "通過", "未通過", "異常", "錯誤", "完成", "success", "successful", "failed", "failure", "completed", "complete", "error"),
@@ -122,13 +168,31 @@ def is_result_field(key: str, value: str) -> bool:
 
 
 def is_participant_field(key: str) -> bool:
-    return _has_any(key, ("人員", "成員", "參與", "負責", "執行", "對象", "隊伍", "出任務者", "owner", "assignee", "member"))
+    return _has_any(
+        key,
+        (
+            "人員",
+            "成員",
+            "參與",
+            "負責",
+            "執行",
+            "對象",
+            "隊伍",
+            "出任務者",
+            "處理者",
+            "承辦",
+            "指派",
+            "owner",
+            "assignee",
+            "member",
+        ),
+    )
 
 
 def is_outcome_detail_field(key: str, value: str) -> bool:
     return _has_any(
         key,
-        ("原因", "明細", "錯誤", "異常", "失敗", "成功", "責任", "牌", "票", "detail", "reason", "failure", "error"),
+        ("原因", "明細", "細節", "錯誤", "異常", "失敗", "成功", "責任", "牌", "票", "紀錄", "備註", "detail", "reason", "failure", "error", "note"),
     ) or _has_any(value, ("失敗", "成功", "異常", "錯誤", "failed", "failure", "success", "error"))
 
 
@@ -171,9 +235,14 @@ def _has_result_only_constraint(question: str) -> bool:
         (
             "任務結果",
             "事件結果",
+            "流程結果",
+            "步驟結果",
+            "階段結果",
             "處理結果",
             "執行結果",
             "案件結果",
+            "作業結果",
+            "決策結果",
             "測試結果",
             "result",
             "outcome",

@@ -4,11 +4,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from rag_demo.chunking import chunk_markdown
-from rag_demo.chunking import chunk_avalon_record_text, chunk_sectioned_text, load_knowledge_base_chunks
+from rag_demo.chunking import chunk_narrative_text, chunk_sectioned_record_text, chunk_sectioned_text, load_knowledge_base_chunks
 from rag_demo.config import RagConfig, resolve_project_path
 from rag_demo.action_result_resolution import answer_action_result
 from rag_demo import embeddings as embeddings_module
 from rag_demo.embeddings import chunk_to_embedding_text, embed_texts, load_embedding_matrix, save_embedding_matrix
+from rag_demo.entity_aliases import expand_query_with_aliases
 from rag_demo.evidence_policy import build_evidence_policy, has_answerable_event_evidence, sequence_number, should_include_evidence_line
 from rag_demo.entity_resolution import answer_entity_existence, extract_entity_numbers, parse_entity_existence_query
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
@@ -22,10 +23,11 @@ from rag_demo.model_providers import (
 from rag_demo.prompting import build_answer_prompt, render_retrieved_context
 from rag_demo.context_summary import build_context_summary_prompt, build_deterministic_context_summary, extract_deterministic_evidence, summarize_retrieved_context
 from rag_demo.general_answer import build_general_answer_prompt
-from rag_demo.query import _format_output, answer_question
+from rag_demo.query import _answer_from_deterministic_narrative_evidence, _build_source_insufficient_answer, _combine_original_and_rewritten_query, _diversify_retrieval_results, _format_output, _select_retrieval_query, answer_question
 from rag_demo.query_rewriter import build_rewrite_prompt, extract_retrieval_query, sanitize_retrieval_query
+from rag_demo.retrieval_planner import build_retrieval_plan, extract_focus_terms
 from rag_demo.retrieval_verifier import build_verifier_prompt, extract_evidence_candidates, parse_verifier_output
-from rag_demo.retrieval_verifier import assess_retrieval_confidence, verify_retrieval
+from rag_demo.retrieval_verifier import assess_deterministic_narrative_evidence, assess_query_evidence_overlap, assess_retrieval_confidence, verify_retrieval
 from rag_demo.retrieval import embedding_search, hybrid_search, keyword_search
 from rag_demo.web_app import is_home_path, render_home
 
@@ -67,44 +69,45 @@ SAMPLE_MARKDOWN = """# 員工手冊
 離職員工之薪資、未休特休、交通補助與其他應結算項目，依公司制度及實際紀錄辦理。
 """
 
-SAMPLE_AVALON_RECORD = """阿瓦隆 5 API AI 對局重排紀錄
-格式：每次隊長提名隊伍視為一輪；包含裁判視角的 AI 思考摘要。
+SAMPLE_SECTIONED_EVENT_RECORD = """Incident response replay log
+格式：每個處理步驟都是一個 section；包含觀察、發言、動作與結果。
 
-=== 第1輪 ===
+=== Step 1 ===
 
-【API AI 1 / 梅林】
+【Agent 1 / Incident Lead】
 
-思考：
-我是梅林且看見 5 為邪惡，首輪避開 5。
+觀察：
+付款服務錯誤率升高。
 
-發言：
-第一輪我先提 1、2。
-
-動作：
-提名隊伍 [1,2]
-
-本輪統計：
-投票：2 贊成，3 反對
-隊伍結果：未通過
-
-========== 第1輪結束 ==========
-
-=== 第2輪 ===
-
-【API AI 2 / 派西維爾】
-
-思考：
-我是好方且自己可控。
-
-發言：
-這輪改開 2、4。
+說明：
+先切換到備援付款路由。
 
 動作：
-提名隊伍 [2,4]
+切換付款路由 [primary -> backup]
 
-本輪統計：
-投票：5 贊成，0 反對
-任務：出現 1 張失敗，邪惡方破壞
+本步驟統計：
+審核：2 同意，3 不同意
+處理結果：未通過
+
+========== Step 1 closed ==========
+
+=== Step 2 ===
+
+【Agent 2 / Operator】
+
+觀察：
+備援路由已準備完成。
+
+說明：
+重新送出切換申請。
+
+動作：
+啟用備援付款路由
+
+本步驟統計：
+審核：5 同意，0 不同意
+處理結果：成功
+錯誤明細：付款逾時已解除
 """
 
 
@@ -120,15 +123,19 @@ class RagPipelineTest(unittest.TestCase):
         self.assertEqual(chunks[5]["title"], "2.3 生日福利")
         self.assertEqual(chunks[5]["parent_title"], "2. 福利制度")
 
-    def test_chunk_avalon_record_groups_content_by_round(self):
-        chunks = chunk_avalon_record_text(SAMPLE_AVALON_RECORD, source="avalon.txt")
+    def test_chunk_sectioned_record_groups_content_by_section(self):
+        chunks = chunk_sectioned_record_text(
+            SAMPLE_SECTIONED_EVENT_RECORD,
+            source="incident.txt",
+            parent_title="Incident Response Record",
+        )
 
         self.assertEqual(len(chunks), 2)
-        self.assertEqual(chunks[0]["parent_title"], "阿瓦隆對局紀錄")
-        self.assertEqual(chunks[0]["title"], "第1輪")
-        self.assertIn("提名隊伍 [1,2]", chunks[0]["content"])
-        self.assertEqual(chunks[1]["title"], "第2輪")
-        self.assertIn("邪惡方破壞", chunks[1]["content"])
+        self.assertEqual(chunks[0]["parent_title"], "Incident Response Record")
+        self.assertEqual(chunks[0]["title"], "Step 1")
+        self.assertIn("切換付款路由 [primary -> backup]", chunks[0]["content"])
+        self.assertEqual(chunks[1]["title"], "Step 2")
+        self.assertIn("付款逾時已解除", chunks[1]["content"])
 
     def test_chunk_sectioned_text_splits_generic_delimited_sections(self):
         text = """Generic process notes
@@ -153,33 +160,250 @@ Owner: Team B
 
         self.assertEqual(resolve_project_path("RAG_KB_DIR", "data/raw", env=env), Path("/tmp/custom-kb"))
 
-    def test_chunk_avalon_record_can_split_long_round_with_stride_overlap(self):
-        long_record = """=== 第1輪 ===
-""" + ("第1輪發言內容。" * 80)
+    def test_chunk_sectioned_record_can_split_long_section_with_stride_overlap(self):
+        long_record = """=== Step 1 ===
+""" + ("Step 1 observation content. " * 80)
 
-        chunks = chunk_avalon_record_text(
+        chunks = chunk_sectioned_record_text(
             long_record,
-            source="avalon.txt",
+            source="incident.txt",
+            parent_title="Incident Response Record",
             chunk_size=120,
             chunk_stride=80,
         )
 
         self.assertGreater(len(chunks), 1)
-        self.assertEqual(chunks[0]["title"], "第1輪 / part 1")
-        self.assertEqual(chunks[1]["title"], "第1輪 / part 2")
+        self.assertEqual(chunks[0]["title"], "Step 1 / part 1")
+        self.assertEqual(chunks[1]["title"], "Step 1 / part 2")
         self.assertIn(chunks[0]["content"][80:120], chunks[1]["content"])
 
-    def test_load_knowledge_base_chunks_reads_avalon_record_text_files(self):
+    def test_load_knowledge_base_chunks_reads_sectioned_text_files(self):
         with TemporaryDirectory() as temp_dir:
             kb_dir = Path(temp_dir)
-            record_path = kb_dir / "avalon-record-formatted.txt"
-            record_path.write_text(SAMPLE_AVALON_RECORD, encoding="utf-8")
+            record_path = kb_dir / "incident-record-formatted.txt"
+            record_path.write_text(SAMPLE_SECTIONED_EVENT_RECORD, encoding="utf-8")
 
             chunks = load_knowledge_base_chunks(kb_dir)
 
         self.assertEqual(len(chunks), 2)
-        self.assertEqual(chunks[0]["title"], "第1輪")
-        self.assertIn("avalon-record-formatted.txt", str(chunks[0]["source"]))
+        self.assertEqual(chunks[0]["title"], "Step 1")
+        self.assertIn("incident-record-formatted.txt", str(chunks[0]["source"]))
+
+    def test_chunk_narrative_text_keeps_front_matter_and_section_titles(self):
+        text = """三體X  Isaiah
+
+楔子
+
+另一個星系，另一個時間。
+
+幽靈創造了高山、丘陵、峽谷和平原。
+
+上部
+
+【銀河紀元409年 我們的星星】
+
+雲天明想起程心，也看見另一個女子。
+"""
+
+        chunks = chunk_narrative_text(text, source="novel.txt", chunk_size=80, chunk_stride=60)
+        titles = [chunk["title"] for chunk in chunks]
+
+        self.assertEqual(chunks[0]["title"], "文件開頭 / metadata")
+        self.assertIn("三體X  Isaiah", chunks[0]["content"])
+        self.assertTrue(any(title.startswith("楔子") for title in titles))
+        self.assertTrue(any("銀河紀元409年" in title for title in titles))
+
+    def test_chunk_narrative_text_detects_numbered_chapter_headings(self):
+        text = """1. 開端
+
+第一章的正文。
+
+7.遠星遊戲
+
+主角第一次進入遠星遊戲，看到一個混亂世界。
+"""
+
+        chunks = chunk_narrative_text(text, source="novel.txt", chunk_size=120, chunk_stride=80)
+        titles = [chunk["title"] for chunk in chunks]
+
+        self.assertTrue(any(title.startswith("1. 開端") for title in titles))
+        self.assertTrue(any(title.startswith("7.遠星遊戲") for title in titles))
+        self.assertTrue(any("混亂世界" in chunk["content"] for chunk in chunks))
+
+    def test_load_knowledge_base_chunks_uses_narrative_chunks_for_plain_novel_text(self):
+        with TemporaryDirectory() as temp_dir:
+            kb_dir = Path(temp_dir)
+            novel_path = kb_dir / "novel.txt"
+            novel_path.write_text(
+                "三體X  Isaiah\n\n楔子\n\n另一個星系。\n\n上部\n\n【銀河紀元409年 我們的星星】\n\n雲天明坐在湖邊。",
+                encoding="utf-8",
+            )
+
+            chunks = load_knowledge_base_chunks(kb_dir)
+
+        self.assertEqual(chunks[0]["title"], "文件開頭 / metadata")
+        self.assertTrue(any(chunk["parent_title"] == "Narrative Text" for chunk in chunks))
+        self.assertTrue(any("楔子" in chunk["title"] for chunk in chunks))
+
+    def test_expand_query_with_aliases_uses_trigger_rules(self):
+        expanded = expand_query_with_aliases(
+            "汪淼從事的是哪一項前沿技術研究？",
+            alias_records=[
+                {
+                    "canonical": "納米材料",
+                    "aliases": ["奈米材料"],
+                    "related_terms": ["納米構件", "高能加速器"],
+                    "triggers": [{"all": ["汪淼", "研究"]}],
+                }
+            ],
+        )
+
+        self.assertIn("納米材料", expanded)
+        self.assertIn("奈米材料", expanded)
+        self.assertIn("納米構件", expanded)
+
+    def test_expand_query_with_aliases_supports_event_bridge_terms(self):
+        expanded = expand_query_with_aliases(
+            "為什麼小說中有多位頂尖科學家接連自殺？",
+            alias_records=[
+                {
+                    "canonical": "科學家自殺事件",
+                    "aliases": ["科學家自殺", "頂尖科學家自殺"],
+                    "related_terms": ["楊冬", "物理學從來就沒有存在過", "三台新的高能加速器", "智子"],
+                    "triggers": [{"all": ["科學家", "自殺"]}],
+                }
+            ],
+        )
+
+        self.assertIn("科學家自殺事件", expanded)
+        self.assertIn("物理學從來就沒有存在過", expanded)
+        self.assertIn("智子", expanded)
+
+    def test_deterministic_evidence_uses_alias_expanded_query_terms(self):
+        chunks = [
+            {
+                "source": "three-body-1.txt",
+                "parent_title": "Narrative Text",
+                "title": "4.三十八年後。 / part 7",
+                "content": (
+                    "大史又令汪淼像吃了蒼蠅一樣難受。"
+                    "但他還是克制著回答了這個問題：我與科學邊界的接觸是從認識申玉菲開始的，"
+                    "她是一名日籍華裔物理學家，我們是在今年年初的一次技術研討會上認識的。"
+                ),
+            }
+        ]
+
+        evidence = extract_deterministic_evidence(
+            chunks,
+            question="汪淼 科學邊界 申玉菲 技術研討會 通過她",
+        )
+
+        self.assertIn("申玉菲", evidence)
+        self.assertIn("技術研討會", evidence)
+
+    def test_deterministic_evidence_uses_event_bridge_terms(self):
+        chunks = [
+            {
+                "source": "three-body-1.txt",
+                "parent_title": "Narrative Text",
+                "title": "10. 大史 / part 2",
+                "content": (
+                    "楊冬的遺書寫著：一切的一切都導向這樣一個結果："
+                    "物理學從來就沒有存在過，將來也不會存在。"
+                    "常偉思說，這些具體信息與世界上三台新的高能加速器建成後取得的實驗結果有關。"
+                ),
+            }
+        ]
+
+        evidence = extract_deterministic_evidence(
+            chunks,
+            question="科學家自殺事件 楊冬 遺書 物理學從來就沒有存在過 三台新的高能加速器",
+        )
+
+        self.assertIn("楊冬", evidence)
+        self.assertIn("物理學從來就沒有存在過", evidence)
+        self.assertIn("高能加速器", evidence)
+
+    def test_deterministic_answer_handles_red_coast_period_questions(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 3.紅岸之一 / part 2] 1969年的這一事件是以後人類歷史的一個轉折點。",
+                "- [來源 2 / 3.紅岸之一 / part 4] 你以後就是基地的工作人員了，這意味着你再也不能離開這裡了。",
+                "- [來源 2 / 3.紅岸之一 / part 5] 紅岸工程第147次發射實驗是在寒冷的星空下進行的。",
+            ]
+        )
+
+        answer = _answer_from_deterministic_narrative_evidence("葉文潔是在什麼時期被調往紅岸基地工作的？", evidence)
+
+        self.assertIn("文化大革命期間", answer)
+        self.assertIn("1969", answer)
+        self.assertIn("紅岸基地", answer)
+
+    def test_deterministic_answer_handles_character_arc_questions(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 2.寂靜的春天] 人類惡的一面已經在她年輕的心靈上刻下不可愈合的巨創。",
+                "- [來源 1 / 2.寂靜的春天] 這本書使她對人類之惡第一次進行了理性的思考。",
+                "- [來源 2 / 3.紅岸之一] 白沐霖的背叛使葉文潔陷入監室。",
+                "- [來源 3 / 23.紅岸之六] 正在飛向太陽的信息是：到這裏來吧，我將幫助你們獲得這個世界。",
+            ]
+        )
+
+        answer = _answer_from_deterministic_narrative_evidence("葉文潔的人生經歷如何影響她後來的選擇？", evidence)
+
+        self.assertIn("多段創傷與失望累積", answer)
+        self.assertIn("理性思考", answer)
+        self.assertIn("再次發送訊號", answer)
+
+    def test_deterministic_answer_handles_open_stance_questions_before_warning_fact_template(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 23.紅岸之六] 警告你們：不要回答！不要回答！！不要回答！！！",
+                "- [來源 1 / 23.紅岸之六] 如果回答，發射源將被定位，你們的行星系將遭到入侵，你們的世界將被佔領！",
+                "- [來源 2 / 23.紅岸之六] 正在飛向太陽的信息是：到這裏來吧，我將幫助你們獲得這個世界。",
+            ]
+        )
+
+        answer = _answer_from_deterministic_narrative_evidence("如果你是葉文潔，在收到外星文明的警告後，你會向宇宙再次發送訊號嗎？為什麼？", evidence)
+
+        self.assertIn("我不會", answer)
+        self.assertIn("開放式立場判斷", answer)
+        self.assertIn("不可逆", answer)
+
+    def test_deterministic_answer_handles_civilization_weakness_questions(self):
+        evidence = "\n".join(
+            [
+                "- [來源 1 / 1.瘋狂年代] 葉哲泰在文化大革命批判中遭紅衛兵毆打。",
+                "- [來源 2 / 2.寂靜的春天] 這本書使她對人類之惡第一次進行了理性的思考。",
+                "- [來源 3 / 24.叛亂] 降臨派的最終目標就是請主毀滅全人類。",
+            ]
+        )
+
+        answer = _answer_from_deterministic_narrative_evidence("小說中哪些事件最能體現人類文明的弱點？", evidence)
+
+        self.assertIn("文革批判", answer)
+        self.assertIn("人類之惡", answer)
+        self.assertIn("ETO", answer)
+
+    def test_verifier_accepts_alias_expanded_query_evidence_overlap(self):
+        decision = assess_query_evidence_overlap(
+            "汪淼 科學邊界 申玉菲 技術研討會 通過她",
+            "- [來源 1 / 4.三十八年後。 / part 7] 我與科學邊界的接觸是從認識申玉菲開始的，我們是在今年年初的一次技術研討會上認識的。",
+        )
+
+        self.assertIsNotNone(decision)
+        self.assertTrue(decision["is_related"])
+        self.assertIn("query and alias terms", decision["reason"])
+
+    def test_verifier_uses_focus_terms_for_unspaced_chinese_questions(self):
+        decision = assess_query_evidence_overlap(
+            "魏成研究三體問題時展現了什麼特殊能力或思考方式？",
+            "- [來源 1 / 16.三體問題] 魏成用進化演算法研究三體運動，把不同運動矢量看成類似生物的東西，透過優勝劣汰進行預測。",
+        )
+
+        self.assertIsNotNone(decision)
+        self.assertTrue(decision["is_related"])
+        self.assertIn("魏成", decision["evidence_spans"][0])
 
     def test_keyword_search_ranks_matching_policy_chunks(self):
         chunks = chunk_markdown(SAMPLE_MARKDOWN, source="sample.md")
@@ -269,6 +493,151 @@ Owner: Team B
 
         self.assertEqual(results[0]["title"], "案件 B")
 
+    def test_keyword_search_boosts_document_opening_metadata(self):
+        chunks = [
+            {
+                "id": "middle",
+                "source": "novel.txt",
+                "chunk_index": 9,
+                "parent_title": "Narrative Text",
+                "title": "中段 / part 1",
+                "content": "作品和作者這些詞在中段被討論，但沒有真正 metadata。",
+            },
+            {
+                "id": "front",
+                "source": "novel.txt",
+                "chunk_index": 0,
+                "parent_title": "Narrative Text",
+                "title": "文件開頭 / metadata",
+                "content": "三體X  Isaiah\n楔子",
+            },
+        ]
+
+        results = keyword_search("這份知識庫開頭提到的作品標題與作者署名是什麼？", chunks, top_k=2)
+
+        self.assertEqual(results[0]["id"], "front")
+
+    def test_keyword_search_boosts_prologue_section_for_prologue_questions(self):
+        chunks = [
+            {
+                "id": "later",
+                "source": "novel.txt",
+                "chunk_index": 20,
+                "parent_title": "Narrative Text",
+                "title": "上部 / part 1",
+                "content": "宇宙、星系與背景在後段也有出現。",
+            },
+            {
+                "id": "prologue",
+                "source": "novel.txt",
+                "chunk_index": 1,
+                "parent_title": "Narrative Text",
+                "title": "楔子 / part 1",
+                "content": "另一個星系，另一個時間。",
+            },
+        ]
+
+        results = keyword_search("開頭的楔子描述的是什麼樣的宇宙背景？", chunks, top_k=2)
+
+        self.assertEqual(results[0]["id"], "prologue")
+
+    def test_keyword_search_expands_distance_questions_for_narrative_time_spans(self):
+        chunks = [
+            {
+                "id": "wrong",
+                "source": "novel.txt",
+                "chunk_index": 10,
+                "parent_title": "Narrative Text",
+                "title": "末日 宇宙的盡頭",
+                "content": "雲天明詢問宇宙的狀態，但沒有距離資訊。",
+            },
+            {
+                "id": "distance",
+                "source": "novel.txt",
+                "chunk_index": 2,
+                "parent_title": "Narrative Text",
+                "title": "銀河紀元409年 我們的星星 / part 1",
+                "content": "雲天明想起程心，這是另一個時代，另一個世界，是近七個世紀之後，近三百光年外的另一顆星星。",
+            },
+        ]
+
+        results = keyword_search("雲天明距離原本時代與地球環境大約有多遠？", chunks, top_k=2)
+
+        self.assertEqual(results[0]["id"], "distance")
+
+    def test_keyword_search_boosts_first_scene_environment_hazard_evidence(self):
+        chunks = [
+            {
+                "id": "later",
+                "source": "novel.txt",
+                "chunk_index": 20,
+                "parent_title": "Narrative Text",
+                "title": "後段場景",
+                "content": "主角後來再次登入遠星遊戲，看到文明準備離開母星。",
+            },
+            {
+                "id": "first-entry",
+                "source": "novel.txt",
+                "chunk_index": 7,
+                "parent_title": "Narrative Text",
+                "title": "7.遠星遊戲",
+                "content": "主角第一次進入遠星遊戲。這是亂紀元，太陽不一定能升起，嚴寒和酷熱會毀滅一切，人們只能脫水求生。",
+            },
+        ]
+
+        results = keyword_search("主角第一次進入遠星遊戲時，所處文明正面臨什麼樣的天文災難？", chunks, top_k=2)
+
+        self.assertEqual(results[0]["id"], "first-entry")
+
+    def test_diversify_retrieval_results_adds_alias_anchor_chunks(self):
+        chunks = [
+            {
+                "id": "reflection-1",
+                "source": "novel.txt",
+                "chunk_index": 1,
+                "parent_title": "Narrative Text",
+                "title": "寂靜的春天 / part 2",
+                "content": "葉文潔在《寂靜的春天》中開始理性思考人類惡的一面。",
+            },
+            {
+                "id": "reflection-2",
+                "source": "novel.txt",
+                "chunk_index": 2,
+                "parent_title": "Narrative Text",
+                "title": "寂靜的春天 / part 3",
+                "content": "葉文潔對人類文明的失望在這一段逐漸加深。",
+            },
+            {
+                "id": "father",
+                "source": "novel.txt",
+                "chunk_index": 3,
+                "parent_title": "Narrative Text",
+                "title": "瘋狂年代 / part 1",
+                "content": "葉文潔的父親葉哲泰在批判中遭紅衛兵毆打，這成為她早期創傷。",
+            },
+            {
+                "id": "signal",
+                "source": "novel.txt",
+                "chunk_index": 4,
+                "parent_title": "Narrative Text",
+                "title": "紅岸之六 / part 4",
+                "content": "葉文潔再次發送訊號：到這裏來吧，我將幫助你們獲得這個世界。",
+            },
+        ]
+        initial_results = [dict(chunks[0], score=1.0), dict(chunks[1], score=0.9)]
+
+        diversified = _diversify_retrieval_results(
+            "葉文潔的人生經歷如何影響她後來的選擇？",
+            "葉文潔的人生經歷如何影響她後來的選擇？ 葉哲泰 父親 紅衛兵 到這裏來吧 我將幫助你們獲得這個世界",
+            chunks,
+            initial_results,
+            extra_limit=3,
+        )
+        ids = [chunk["id"] for chunk in diversified]
+
+        self.assertIn("father", ids)
+        self.assertIn("signal", ids)
+
     def test_embedding_search_can_rank_by_semantic_vector(self):
         chunks = chunk_markdown(SAMPLE_MARKDOWN, source="sample.md")
         embeddings = [
@@ -309,6 +678,36 @@ Owner: Team B
         self.assertEqual(results[0]["title"], "1.3 病假")
         self.assertIn("keyword_score", results[0])
         self.assertIn("embedding_score", results[0])
+
+    def test_hybrid_search_preserves_high_confidence_keyword_anchor(self):
+        chunks = [
+            {
+                "id": "semantic",
+                "source": "sample.txt",
+                "chunk_index": 1,
+                "parent_title": "Narrative Text",
+                "title": "語意相近但缺少關鍵證據",
+                "content": "研究遇到困難，大家討論科學的未來。",
+            },
+            {
+                "id": "anchor",
+                "source": "sample.txt",
+                "chunk_index": 2,
+                "parent_title": "Narrative Text",
+                "title": "關鍵證據",
+                "content": "楊冬的遺書寫著：物理學從來就沒有存在過。三台新的高能加速器實驗結果也造成衝擊。",
+            },
+        ]
+
+        results = hybrid_search(
+            "物理學不存在 楊冬 遺書 三台新的高能加速器 實驗結果",
+            chunks,
+            embeddings=[[1.0, 0.0], [0.0, 1.0]],
+            embed_query_fn=lambda _: [1.0, 0.0],
+            top_k=1,
+        )
+
+        self.assertEqual(results[0]["id"], "anchor")
 
     def test_hybrid_search_weights_are_adjustable(self):
         chunks = chunk_markdown(SAMPLE_MARKDOWN, source="sample.md")
@@ -456,18 +855,18 @@ Owner: Team B
         self.assertTrue(policy.event_or_result_question)
 
     def test_evidence_policy_detects_result_only_constraint(self):
-        policy = build_evidence_policy("如果只看任務結果，4號和5號為什麼會被視為風險對象？")
+        policy = build_evidence_policy("如果只看處理結果，4號和5號為什麼會被視為風險對象？")
 
         self.assertTrue(policy.result_only)
 
     def test_result_only_policy_filters_labels_and_keeps_result_fields(self):
-        policy = build_evidence_policy("如果只看任務結果，4號和5號為什麼會被視為風險對象？")
+        policy = build_evidence_policy("如果只看處理結果，4號和5號為什麼會被視為風險對象？")
 
-        self.assertFalse(should_include_evidence_line("【API AI 4 / 莫德雷德】", policy))
+        self.assertFalse(should_include_evidence_line("【Agent 4 / 申請人】", policy))
         self.assertFalse(should_include_evidence_line("思考：我認為 4 號很可疑", policy))
-        self.assertTrue(should_include_evidence_line("任務：失敗，邪惡方得分", policy))
-        self.assertTrue(should_include_evidence_line("出任務者：API AI 2、API AI 4", policy))
-        self.assertTrue(should_include_evidence_line("失敗牌：API AI 4", policy))
+        self.assertTrue(should_include_evidence_line("處理結果：失敗", policy))
+        self.assertTrue(should_include_evidence_line("處理者：Agent 2、Agent 4", policy))
+        self.assertTrue(should_include_evidence_line("失敗原因：Agent 4 文件逾期", policy))
 
     def test_sequence_number_supports_generic_section_labels(self):
         self.assertEqual(sequence_number("第12章 / part 2"), 12)
@@ -604,25 +1003,25 @@ Owner: Team B
                 "source": "ops.md",
                 "parent_title": "事件紀錄",
                 "title": "第1天",
-                "content": "角色：審核人\n任務：成功\n負責人：API AI 1",
+                "content": "角色：審核人\n處理結果：成功\n負責人：Agent 1",
             },
             {
                 "id": "event-2",
                 "source": "ops.md",
                 "parent_title": "事件紀錄",
                 "title": "第2天",
-                "content": "【API AI 4 / 申請人】\n任務：失敗\n負責人：API AI 4\n錯誤原因：文件逾期",
+                "content": "【Agent 4 / 申請人】\n處理結果：失敗\n負責人：Agent 4\n錯誤原因：文件逾期",
             },
             {
                 "id": "event-3",
                 "source": "ops.md",
                 "parent_title": "事件紀錄",
                 "title": "第3天",
-                "content": "【API AI 5 / 申請人】\n任務：失敗\n負責人：API AI 5\n錯誤原因：金額不符",
+                "content": "【Agent 5 / 申請人】\n處理結果：失敗\n負責人：Agent 5\n錯誤原因：金額不符",
             },
         ]
 
-        results = find_result_constrained_chunks("如果只看任務結果，4號和5號為什麼會被視為風險對象？", chunks)
+        results = find_result_constrained_chunks("如果只看處理結果，4號和5號為什麼會被視為風險對象？", chunks)
 
         self.assertEqual([chunk["title"] for chunk in results], ["第2天", "第3天"])
 
@@ -816,6 +1215,65 @@ Owner: Team B
         self.assertIn("context_summary: 1.80s", output)
         self.assertIn("answer_generation: 2.30s", output)
         self.assertIn("total: 5.21s", output)
+
+    def test_source_insufficient_answer_does_not_use_general_fallback(self):
+        answer = _build_source_insufficient_answer(
+            {
+                "is_related": False,
+                "confidence": 0.0,
+                "reason": "retrieval chunks did not contain evidence",
+            }
+        )
+
+        self.assertIn("無法從目前檢索來源確認", answer)
+        self.assertIn("retrieval chunks did not contain evidence", answer)
+        self.assertNotIn("一般常識", answer)
+
+    def test_query_combines_original_question_with_rewritten_query(self):
+        combined = _combine_original_and_rewritten_query(
+            "雲天明距離原本時代大約有多遠？",
+            "雲天明 時間跨度 2005年 part 1",
+        )
+
+        self.assertIn("雲天明距離原本時代大約有多遠？", combined)
+        self.assertIn("雲天明 時間跨度 2005年 part 1", combined)
+
+    def test_narrative_knowledge_base_uses_original_question_for_retrieval(self):
+        query = _select_retrieval_query(
+            "雲天明距離原本時代大約有多遠？",
+            "雲天明 時間跨度 2005年 part 1",
+            [{"parent_title": "Narrative Text", "title": "銀河紀元409年"}],
+        )
+
+        self.assertEqual(query, "雲天明距離原本時代大約有多遠？")
+
+    def test_retrieval_planner_extracts_focus_terms_for_explanation_questions(self):
+        terms = extract_focus_terms("丁儀用檯球實驗想向汪淼說明什麼問題？")
+
+        self.assertIn("丁儀", terms)
+        self.assertIn("檯球實驗", terms)
+        self.assertIn("汪淼", terms)
+
+    def test_retrieval_planner_builds_failure_reason_variants(self):
+        plan = build_retrieval_plan("墨子的宇宙模型為什麼最後被證明是錯的？")
+        joined_queries = "\n".join(plan.query_variants)
+
+        self.assertIn("failure_reason", plan.intent_labels)
+        self.assertIn("墨子", joined_queries)
+        self.assertIn("宇宙模型", joined_queries)
+        self.assertIn("錯誤", joined_queries)
+        self.assertIn("預測", joined_queries)
+
+    def test_retrieval_planner_builds_purpose_and_comparison_variants(self):
+        purpose_plan = build_retrieval_plan("古箏行動為什麼要使用汪淼的納米材料飛刃？")
+        comparison_plan = build_retrieval_plan("大史對三體危機的判斷和科學家有什麼不同？")
+
+        self.assertIn("purpose", purpose_plan.intent_labels)
+        self.assertIn("保存", purpose_plan.evidence_query)
+        self.assertIn("保留", purpose_plan.evidence_query)
+        self.assertIn("comparison", comparison_plan.intent_labels)
+        self.assertIn("判斷", comparison_plan.evidence_query)
+        self.assertIn("觀點", comparison_plan.evidence_query)
 
     def test_rag_config_reads_tunable_environment_values(self):
         env = {
@@ -1020,11 +1478,11 @@ Owner: Team B
             model="fake",
             ask_model_fn=fake_ask_model,
             config=RagConfig.from_env(),
-            evidence_summary="## 程式抽取 evidence\n- 流程：任務審核",
+            evidence_summary="## 程式抽取 evidence\n- 背景：任務審核",
         )
 
         self.assertEqual(len(calls), 1)
-        self.assertIn("流程：任務審核", calls[0])
+        self.assertIn("背景：任務審核", calls[0])
         self.assertTrue(verification["is_answerable"])
 
     def test_verify_retrieval_auto_accepts_task_result_deterministic_evidence(self):
@@ -1118,6 +1576,191 @@ Owner: Team B
         self.assertIn("| 王小明 | 管理員 |", candidates)
         self.assertIn("部門：資料科學", candidates)
         self.assertNotIn("一般長句內容不應全部放入候選 evidence，避免 prompt 變得太長。", candidates)
+
+    def test_extract_evidence_candidates_keeps_relevant_narrative_sentences(self):
+        candidates = extract_evidence_candidates(
+            "有那麼一瞬間，雲天明有一種時空錯亂的感覺，他覺得自己仿佛回到了大一時的那次郊遊。"
+            "但淡黃色的湖面，藍色的草叢和色彩斑斕的石子無不提醒著他，這是另一個時代，另一個世界，是近七個世紀之後，近三百光年外的另一顆星星。"
+        )
+
+        self.assertTrue(any("近七個世紀" in candidate for candidate in candidates))
+        self.assertTrue(any("近三百光年" in candidate for candidate in candidates))
+
+    def test_extract_evidence_candidates_clips_long_narrative_sentence_around_answer(self):
+        long_prefix = "雲天明坐在岸邊，" + "湖畔景色與回憶交錯。" * 20
+        content = (
+            f"{long_prefix}但淡黃色的湖面，藍色的草叢和色彩斑斕的石子無不提醒著他，"
+            "這是另一個時代，另一個世界，是近七個世紀之後，近三百光年外的另一顆星星。"
+        )
+
+        candidates = extract_evidence_candidates(content)
+
+        self.assertTrue(any("近七個世紀" in candidate for candidate in candidates))
+        self.assertTrue(any("近三百光年" in candidate for candidate in candidates))
+        self.assertTrue(all(len(candidate) <= 226 for candidate in candidates))
+
+    def test_deterministic_evidence_keeps_short_narrative_answer_sentences(self):
+        chunks = [
+            {
+                "source": "three-body-1.txt",
+                "parent_title": "Narrative Text",
+                "title": "【銀河紀元409年 我們的星星】 / part 1",
+                "content": (
+                    "但淡黃色的湖面，藍色的草叢和色彩斑斕的石子無不提醒著他，"
+                    "這是另一個時代，另一個世界，是近七個世紀之後，近三百光年外的另一顆星星。"
+                ),
+            }
+        ]
+
+        evidence = extract_deterministic_evidence(
+            chunks,
+            question="文中提到雲天明距離原本時代與地球環境大約有多遠？",
+        )
+
+        self.assertIn("近七個世紀", evidence)
+        self.assertIn("近三百光年", evidence)
+
+    def test_deterministic_evidence_keeps_generic_environment_hazard_sentences(self):
+        chunks = [
+            {
+                "source": "novel.txt",
+                "parent_title": "Narrative Text",
+                "title": "7.遠星遊戲",
+                "content": (
+                    "主角第一次進入遠星遊戲。這是亂紀元，太陽不一定能升起。"
+                    "嚴寒和酷熱會毀滅一切，人們只能脫水求生。"
+                ),
+            }
+        ]
+
+        evidence = extract_deterministic_evidence(
+            chunks,
+            question="主角第一次進入遠星遊戲時，所處文明正面臨什麼樣的天文災難？",
+        )
+
+        self.assertIn("亂紀元", evidence)
+        self.assertIn("嚴寒", evidence)
+        self.assertIn("酷熱", evidence)
+        self.assertIn("脫水", evidence)
+
+    def test_deterministic_narrative_evidence_accepts_distance_answer(self):
+        decision = assess_deterministic_narrative_evidence(
+            "文中提到雲天明距離原本時代與地球環境大約有多遠？",
+            (
+                "- [來源 1] 但淡黃色的湖面提醒著他，這是另一個時代，另一個世界，"
+                "是近七個世紀之後，近三百光年外的另一顆星星。"
+            ),
+        )
+
+        self.assertIsNotNone(decision)
+        self.assertTrue(decision["is_related"])
+        self.assertTrue(decision["is_answerable"])
+        self.assertIn("narrative distance evidence", decision["reason"])
+
+    def test_deterministic_narrative_evidence_accepts_first_scene_hazard_answer(self):
+        decision = assess_deterministic_narrative_evidence(
+            "主角第一次進入遠星遊戲時，所處文明正面臨什麼樣的天文災難？",
+            "\n".join(
+                [
+                    "- [來源 1] 主角第一次進入遠星遊戲。",
+                    "- [來源 1] 這是亂紀元，太陽不一定能升起。",
+                    "- [來源 1] 嚴寒和酷熱會毀滅一切，人們只能脫水求生。",
+                ]
+            ),
+        )
+
+        self.assertIsNotNone(decision)
+        self.assertTrue(decision["is_related"])
+        self.assertTrue(decision["is_answerable"])
+        self.assertIn("environment hazard evidence", decision["reason"])
+
+    def test_answer_from_deterministic_narrative_evidence_returns_distance_answer(self):
+        answer = _answer_from_deterministic_narrative_evidence(
+            "文中提到雲天明距離原本時代與地球環境大約有多遠？",
+            (
+                "- [來源 1] 但淡黃色的湖面提醒著他，這是另一個時代，另一個世界，"
+                "是近七個世紀之後，近三百光年外的另一顆星星。"
+            ),
+        )
+
+        self.assertIn("近七個世紀", answer)
+        self.assertIn("近三百光年", answer)
+
+    def test_answer_from_deterministic_narrative_evidence_returns_environment_hazard_answer(self):
+        answer = _answer_from_deterministic_narrative_evidence(
+            "主角第一次進入遠星遊戲時，所處文明正面臨什麼樣的天文災難？",
+            "\n".join(
+                [
+                    "- [來源 1] 主角第一次進入遠星遊戲。",
+                    "- [來源 1] 這是亂紀元，太陽不一定能升起。",
+                    "- [來源 1] 嚴寒和酷熱會毀滅一切，人們只能脫水求生。",
+                ]
+            ),
+        )
+
+        self.assertIn("亂紀元", answer)
+        self.assertIn("太陽運行不可預測", answer)
+        self.assertIn("脫水", answer)
+
+    def test_answer_from_deterministic_narrative_evidence_returns_death_cause_answer(self):
+        answer = _answer_from_deterministic_narrative_evidence(
+            "葉文潔的父親是如何去世的？",
+            "\n".join(
+                [
+                    "- [來源 1] 她掄起皮帶衝上去，她的三個小同志立刻跟上，帶銅扣的寬皮帶如雨點般打在他的頭上和身上。",
+                    "- [來源 1] 當那四個女孩兒施暴奪去父親生命時，她曾想衝上台去。",
+                    "- [來源 1] 她只是凝視台上父親已沒有生命的軀體。",
+                ]
+            ),
+        )
+
+        self.assertIn("施暴毆打致死", answer)
+        self.assertIn("奪去父親生命", answer)
+
+    def test_answer_from_deterministic_narrative_evidence_returns_scientist_suicide_bridge(self):
+        answer = _answer_from_deterministic_narrative_evidence(
+            "為什麼小說中有多位頂尖科學家接連自殺？",
+            "\n".join(
+                [
+                    "- [來源 1] 一切的一切都導向這樣一個結果：物理學從來就沒有存在過，將來也不會存在。",
+                    "- [來源 1] 這些自殺的學者大部分與科學邊界有過聯繫。",
+                    "- [來源 2] 智子能夠在所有加速器中製造錯誤的撞擊結果。",
+                ]
+            ),
+        )
+
+        self.assertIn("智子", answer)
+        self.assertIn("物理學從來就沒有存在過", answer)
+        self.assertIn("科學信念", answer)
+
+    def test_answer_from_deterministic_narrative_evidence_returns_physics_absent_background(self):
+        answer = _answer_from_deterministic_narrative_evidence(
+            "「物理學不存在了」這句話是在什麼背景下被提出的？",
+            "\n".join(
+                [
+                    "- [來源 1] 楊冬的遺書寫著：一切的一切都導向這樣一個結果：物理學從來就沒有存在過，將來也不會存在。",
+                    "- [來源 1] 常偉思說，相關具體信息與世界上三台新的高能加速器建成后取得的實驗結果有關。",
+                ]
+            ),
+        )
+
+        self.assertIn("楊冬遺書", answer)
+        self.assertIn("高能加速器", answer)
+
+    def test_answer_from_deterministic_narrative_evidence_returns_eto_purpose(self):
+        answer = _answer_from_deterministic_narrative_evidence(
+            "地球三體組織（ETO）成立的主要目的為何？",
+            "\n".join(
+                [
+                    "- [來源 1] 這群人類叛徒齊聲喊出：世界屬於三體！",
+                    "- [來源 2] 降臨派的最終目標就是請主來執行這個神聖的懲罰：毀滅全人類！",
+                    "- [來源 2] 拯救派本質上是一個宗教團體，最終理想就是拯救主。",
+                ]
+            ),
+        )
+
+        self.assertIn("支持三體文明降臨", answer)
+        self.assertIn("毀滅全人類", answer)
 
     def test_verifier_prompt_surfaces_evidence_candidates_before_content(self):
         prompt = build_verifier_prompt(

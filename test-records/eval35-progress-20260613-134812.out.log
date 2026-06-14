@@ -1,0 +1,41 @@
+Q01 done in 54.949s error=False
+Q02 done in 6.295s error=False
+Q03 done in 6.766s error=False
+Q04 done in 8.165s error=False
+Q05 done in 8.529s error=False
+Q06 done in 6.764s error=False
+Q07 done in 2.991s error=False
+Q08 done in 12.925s error=False
+Q09 done in 12.865s error=False
+Q10 done in 12.282s error=False
+Q11 done in 7.512s error=False
+Q12 done in 8.098s error=False
+Q13 done in 11.856s error=False
+Q14 done in 12.212s error=False
+Q15 done in 10.319s error=False
+Q16 done in 9.479s error=False
+Q17 done in 7.924s error=False
+Q18 done in 7.88s error=False
+Q19 done in 21.695s error=False
+Q20 done in 11.927s error=False
+Q21 done in 18.925s error=False
+Q22 done in 7.442s error=False
+Q23 done in 21.239s error=False
+Q24 done in 8.066s error=False
+Q25 done in 12.112s error=False
+Q26 done in 15.817s error=False
+Q27 done in 7.762s error=False
+Q28 done in 8.782s error=False
+Q29 done in 13.242s error=False
+Q30 done in 10.437s error=False
+Q31 done in 17.259s error=False
+Q32 done in 15.727s error=False
+Q33 done in 24.023s error=False
+Q34 done in 8.7s error=False
+Q35 done in 15.41s error=False
+Completed 35/35 questions
+Errors: 0
+Raw JSONL: C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\evals\three_body_qwen\three_body_35_raw_answers_20260613-134813.jsonl
+Raw report: C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\evals\three_body_qwen\three_body_35_raw_report_20260613-134813.md
+Test record: C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\test-records\qwen-rag-three-body-35q-20260613-134813.md
+Total elapsed: 446.432s

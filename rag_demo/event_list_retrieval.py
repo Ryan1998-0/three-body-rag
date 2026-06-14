@@ -98,10 +98,20 @@ def _is_event_result_key(key: str) -> bool:
         "判定",
         "結論",
         "任務",
+        "事件",
+        "流程",
+        "步驟",
+        "階段",
+        "案件",
         "處理狀態",
         "status",
         "result",
         "outcome",
+        "task",
+        "event",
+        "process",
+        "step",
+        "case",
     }
 
 
