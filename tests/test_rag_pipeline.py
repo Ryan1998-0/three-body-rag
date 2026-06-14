@@ -14,6 +14,7 @@ from rag_demo.evidence_policy import build_evidence_policy, has_answerable_event
 from rag_demo.entity_resolution import answer_entity_existence, extract_entity_numbers, parse_entity_existence_query
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
 from rag_demo.index_store import load_index, save_index
+from rag_demo.keyword_extraction import parse_keywords_output
 from rag_demo.ollama_client import build_ollama_payload
 from rag_demo.model_providers import (
     build_anthropic_payload,
@@ -21,9 +22,11 @@ from rag_demo.model_providers import (
     parse_model_spec,
 )
 from rag_demo.prompting import build_answer_prompt, render_retrieved_context
+from rag_demo.qa_agent import build_qa_prompt
+from rag_demo.question_extraction import parse_question_output
 from rag_demo.context_summary import build_context_summary_prompt, build_deterministic_context_summary, extract_deterministic_evidence, summarize_retrieved_context
 from rag_demo.general_answer import build_general_answer_prompt
-from rag_demo.query import _answer_from_deterministic_narrative_evidence, _build_source_insufficient_answer, _combine_original_and_rewritten_query, _diversify_retrieval_results, _format_output, _select_retrieval_query, answer_question
+from rag_demo.query import _answer_from_deterministic_narrative_evidence, _build_source_insufficient_answer, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _diversify_retrieval_results, _format_output, _format_three_agent_output, _hybrid_rerank_results, _select_retrieval_query, answer_question
 from rag_demo.query_rewriter import build_rewrite_prompt, extract_retrieval_query, sanitize_retrieval_query
 from rag_demo.retrieval_planner import build_retrieval_plan, extract_focus_terms
 from rag_demo.retrieval_verifier import build_verifier_prompt, extract_evidence_candidates, parse_verifier_output
@@ -1176,10 +1179,132 @@ Owner: Team B
         self.assertIn("動作發生不等於結果成功", prompt)
         self.assertIn("來源只提到動作", prompt)
 
-    def test_answer_question_default_top_k_is_three(self):
+    def test_answer_question_default_top_k_is_five(self):
         signature = inspect.signature(answer_question)
 
-        self.assertEqual(signature.parameters["top_k"].default, 3)
+        self.assertEqual(signature.parameters["top_k"].default, 5)
+
+    def test_three_agent_query_variants_include_question_and_keywords(self):
+        variants = _build_three_agent_query_variants(
+            "她為什麼回覆？",
+            "葉文潔為什麼回覆三體文明？",
+            ["葉文潔", "三體文明", "紅岸基地"],
+        )
+
+        names = [variant["name"] for variant in variants]
+        queries = "\n".join(variant["query"] for variant in variants)
+        self.assertEqual(names, ["original", "question_agent", "keywords", "combined"])
+        self.assertIn("她為什麼回覆？", queries)
+        self.assertIn("葉文潔為什麼回覆三體文明？", queries)
+        self.assertIn("葉文潔 三體文明 紅岸基地", queries)
+
+    def test_hybrid_rerank_uses_multiple_query_variants_before_top_k(self):
+        chunks = [
+            {
+                "id": "c1",
+                "source": "three-body.txt",
+                "parent_title": "Narrative Text",
+                "title": "紅岸 / part 1",
+                "content": "葉文潔在紅岸基地工作。",
+            },
+            {
+                "id": "c2",
+                "source": "three-body.txt",
+                "parent_title": "Narrative Text",
+                "title": "三體 / part 1",
+                "content": "三體文明收到地球訊號。",
+            },
+            {
+                "id": "c3",
+                "source": "three-body.txt",
+                "parent_title": "Narrative Text",
+                "title": "無關 / part 1",
+                "content": "普通背景敘述。",
+            },
+        ]
+        variants = _build_three_agent_query_variants(
+            "葉文潔為什麼回覆？",
+            "葉文潔為什麼回覆三體文明？",
+            ["葉文潔", "三體文明"],
+        )
+
+        results = _hybrid_rerank_results(
+            query_variants=variants,
+            question="葉文潔為什麼回覆？",
+            refined_question="葉文潔為什麼回覆三體文明？",
+            keywords=["葉文潔", "三體文明"],
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=3,
+        )
+
+        self.assertEqual(len(results), 2)
+        self.assertTrue(all(result["retrieval_method"] == "hybrid_rerank" for result in results))
+        self.assertTrue(any("kw:question_agent" in result["rerank_trace"] for result in results))
+
+    def test_parse_keywords_output_reads_json_keywords(self):
+        keywords = parse_keywords_output('{"keywords": ["葉文潔", "紅岸基地", "三體文明"]}')
+
+        self.assertEqual(keywords, ["葉文潔", "紅岸基地", "三體文明"])
+
+    def test_parse_question_output_reads_refined_question(self):
+        refined_question = parse_question_output(
+            '{"refined_question": "葉文潔為什麼回覆三體文明？", "intent": "cause"}'
+        )
+
+        self.assertEqual(refined_question, "葉文潔為什麼回覆三體文明？")
+
+    def test_qa_prompt_combines_agent_outputs_and_retrieved_chunks(self):
+        prompt = build_qa_prompt(
+            original_question="她為什麼這樣做？",
+            refined_question="葉文潔為什麼回覆三體文明？",
+            keywords=["葉文潔", "紅岸基地", "三體文明"],
+            chunks=[
+                {
+                    "source": "three-body.txt",
+                    "parent_title": "Narrative Text",
+                    "title": "紅岸",
+                    "content": "葉文潔收到警告後仍回覆訊號。",
+                }
+            ],
+        )
+
+        self.assertIn("Question Extraction Agent Output", prompt)
+        self.assertIn("葉文潔為什麼回覆三體文明？", prompt)
+        self.assertNotIn("Keyword Extraction Agent Output", prompt)
+        self.assertNotIn("葉文潔, 紅岸基地, 三體文明", prompt)
+        self.assertNotIn("Original Question", prompt)
+        self.assertIn("Retrieved Chunks", prompt)
+
+    def test_three_agent_output_includes_hybrid_query_variants(self):
+        output = _format_three_agent_output(
+            question="葉文潔為什麼回覆？",
+            query_variants=[
+                {"name": "original", "query": "葉文潔為什麼回覆？"},
+                {"name": "question_agent", "query": "葉文潔為什麼回覆三體文明？"},
+                {"name": "keywords", "query": "葉文潔 三體文明"},
+            ],
+            keywords=["葉文潔", "三體文明"],
+            refined_question="葉文潔為什麼回覆三體文明？",
+            results=[
+                {
+                    "source": "three-body.txt",
+                    "title": "紅岸 / part 1",
+                    "score": 1.2,
+                    "keyword_score": 10,
+                    "embedding_score": 0.7,
+                    "rerank_trace": "kw:question_agent:1",
+                }
+            ],
+            answer="她希望三體文明介入人類世界。",
+            timing={"retrieval": 0.12, "qa_agent": 1.23},
+        )
+
+        self.assertIn("Hybrid Retrieval Query Variants", output)
+        self.assertIn("- question_agent: 葉文潔為什麼回覆三體文明？", output)
+        self.assertIn("trace=kw:question_agent:1", output)
+        self.assertIn("qa_agent: 1.23s", output)
 
     def test_format_output_includes_node_timing_trace(self):
         output = _format_output(
@@ -1280,6 +1405,7 @@ Owner: Team B
             "RAG_TOP_K": "4",
             "RAG_CHUNK_SIZE": "1800",
             "RAG_CHUNK_STRIDE": "600",
+            "RAG_RETRIEVAL_CANDIDATE_K": "30",
             "RAG_KEYWORD_WEIGHT": "0.45",
             "RAG_EMBEDDING_WEIGHT": "0.55",
             "RAG_METADATA_BOOST_MAX": "0.12",
@@ -1295,6 +1421,7 @@ Owner: Team B
         self.assertEqual(config.top_k, 4)
         self.assertEqual(config.chunk_size, 1800)
         self.assertEqual(config.chunk_stride, 600)
+        self.assertEqual(config.retrieval_candidate_k, 30)
         self.assertAlmostEqual(config.keyword_weight, 0.45)
         self.assertAlmostEqual(config.embedding_weight, 0.55)
         self.assertAlmostEqual(config.metadata_boost_max, 0.12)

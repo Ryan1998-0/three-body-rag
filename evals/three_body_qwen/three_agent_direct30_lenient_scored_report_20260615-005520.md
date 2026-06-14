@@ -1,0 +1,1781 @@
+# Three-Agent Direct30 Lenient Scored Report
+
+- Time: 2026-06-15 00:58:37
+- Model: `qwen2.5:7b`
+- Top K: `5`
+- Chunk size / stride: `1200/600`
+- Questions: `C:/Users/g83ej/Documents/Codex/2026-06-07/gpt5-5/outputs/RAG_Project/evals/three_body_qwen/questions_direct30_lenient_20260615.json`
+- Raw answers: `C:/Users/g83ej/Documents/Codex/2026-06-07/gpt5-5/outputs/RAG_Project/evals/three_body_qwen/three_agent_direct30_lenient_raw_answers_20260615-005520.jsonl`
+
+## Scoring Mechanism
+
+- 30 narrower questions designed for direct retrieval checks.
+- Each question has 3 weighted criteria adding up to 5 points.
+- A criterion gets full weighted credit if the Final Answer contains any configured alias.
+- This is intentionally lenient and should be treated as a regression signal, not final human grading.
+
+## Run Result
+
+- Completed: `30/30`
+- Runtime errors: `0`
+- Total elapsed: about `196.7s`
+- Total score: `104 / 150 = 69.3 / 100`
+
+## Score Table
+
+| ID | Score | Missed Criteria |
+| --- | ---: | --- |
+| D30Q01 | 2/5 | 提到人類難以靠自身完成道德自覺或改善; 提到需要人類之外的力量 |
+| D30Q02 | 4/5 | 提到葉文潔被送去審查、關押或受迫害 |
+| D30Q03 | 3/5 | 提到葉哲泰堅持科學或物理學立場 |
+| D30Q04 | 1/5 | 提到紅岸是大型武器或軍事研究項目; 提到它的意義可能比原子彈或氫彈更大 |
+| D30Q05 | 5/5 | None |
+| D30Q06 | 3/5 | 提到她希望外部文明介入、改造或拯救人類 |
+| D30Q07 | 1/5 | 提到物理學從來沒有存在過或物理學不存在; 提到基礎物理或科學信念崩潰 |
+| D30Q08 | 4/5 | 提到科學信念或世界觀動搖 |
+| D30Q09 | 3/5 | 提到倒數或倒計時 |
+| D30Q10 | 4/5 | 提到觀測站、衛星或天文觀測 |
+| D30Q11 | 5/5 | None |
+| D30Q12 | 5/5 | None |
+| D30Q13 | 2/5 | 提到世界、文明或大地遭毀滅; 提到酷熱、燃燒或火海 |
+| D30Q14 | 3/5 | 提到運動混沌、無規律或不可預測 |
+| D30Q15 | 3/5 | 提到這關係到三體文明或其世界命運 |
+| D30Q16 | 5/5 | None |
+| D30Q17 | 3/5 | 提到距離約四光年 |
+| D30Q18 | 5/5 | None |
+| D30Q19 | 5/5 | None |
+| D30Q20 | 5/5 | None |
+| D30Q21 | 5/5 | None |
+| D30Q22 | 5/5 | None |
+| D30Q23 | 3/5 | 提到使用納米、奈米或飛刃材料 |
+| D30Q24 | 3/5 | 提到三體組織或 ETO 資料 |
+| D30Q25 | 3/5 | 提到質子 |
+| D30Q26 | 5/5 | None |
+| D30Q27 | 5/5 | None |
+| D30Q28 | 3/5 | 提到他想給地球文明生存機會或拯救地球 |
+| D30Q29 | 1/5 | 提到元首認定他有罪或是最大罪犯; 提到元首讓他自由或活著看到地球失去希望 |
+| D30Q30 | 0/5 | 提到三體文明或智子向人類傳達訊息; 提到把人類貶低為蟲子或弱小存在; 提到這對人類信心、尊嚴或抵抗意志造成打擊 |
+
+## D30Q01
+
+Question: 葉文潔讀完《寂靜的春天》後，對人類之惡得到什麼結論？
+
+Elapsed: `23.663s`
+
+Score: `2 / 5`
+
+Matched criteria:
+- 提到人類之惡或人類行為的邪惡性 (+2)
+
+Missed criteria:
+- 提到人類難以靠自身完成道德自覺或改善
+- 提到需要人類之外的力量
+
+Final Answer:
+
+```text
+根據提供的信息，葉文潔讀完《寂靜的春天》後，對人類之惡得到了以下結論：她認為人類行為中的邪惡是普遍存在的，就像冰山只是巨大水體中的一小部分一樣。這種想法最終決定了她的終身道路。
+
+來源編號與章節名稱：
+[來源 4] 文件：C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\data\raw\three-body-1.txt 章節：2.寂靜的春天兩年以後，大興安嶺。 / part 5
+```
+
+Full RAG Output:
+
+```text
+問題：葉文潔讀完《寂靜的春天》後，對人類之惡得到什麼結論？
+
+Keyword Extraction Agent:
+葉文潔, 《寂靜的春天》, 人類之惡
+
+Question Extraction Agent:
+葉文潔讀完《寂靜的春天》後，對人類之惡得到了什麼結論？
+
+向量檢索用查詢：
+葉文潔 《寂靜的春天》 人類之惡
+
+檢索來源 Top 5：
+1. three-body-1.txt / 26.無人懺悔 / part 15 / score=0.6538, embedding=0.6538
+2. three-body-1.txt / 26.無人懺悔 / part 12 / score=0.6383, embedding=0.6383
+3. three-body-1.txt / 2.寂靜的春天兩年以後，大興安嶺。 / part 8 / score=0.6353, embedding=0.6353
+4. three-body-1.txt / 2.寂靜的春天兩年以後，大興安嶺。 / part 5 / score=0.6328, embedding=0.6328
+5. three-body-1.txt / 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 11 / score=0.6289, embedding=0.6289
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 3.20s
+- question_extraction_agent: 1.11s
+- load_embeddings: 0.00s
+- retrieval: 14.08s
+- qa_agent: 5.27s
+- total: 23.66s
+
+Final Answer:
+根據提供的信息，葉文潔讀完《寂靜的春天》後，對人類之惡得到了以下結論：她認為人類行為中的邪惡是普遍存在的，就像冰山只是巨大水體中的一小部分一樣。這種想法最終決定了她的終身道路。
+
+來源編號與章節名稱：
+[來源 4] 文件：C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\data\raw\three-body-1.txt 章節：2.寂靜的春天兩年以後，大興安嶺。 / part 5
+
+```
+
+## D30Q02
+
+Question: 白沐霖拿走葉文潔整理的信件後，造成葉文潔遇到什麼麻煩？
+
+Elapsed: `6.674s`
+
+Score: `4 / 5`
+
+Matched criteria:
+- 提到白沐霖拿走或利用她整理的材料 (+2)
+- 提到材料被當成政治問題或罪證 (+2)
+
+Missed criteria:
+- 提到葉文潔被送去審查、關押或受迫害
+
+Final Answer:
+
+```text
+根據提供的信息，白沐霖拿走葉文潔整理的信件後，葉文潔遇到了麻煩。具體來說，葉文潔被師政治部調查，因為她的信件被懷疑與《寂靜的春天》這本書有關，而該書在當時被視為反動的大毒草。張主任告知葉文潔，白沐霖只是受她之託把信帶到呼和浩特發出去，並不知道信的內容，但葉文潔因此陷入困境。
+
+來源編號：[來源 1] 章節：2.寂靜的春天兩年以後，大興安嶺。 / part 9
+```
+
+Full RAG Output:
+
+```text
+問題：白沐霖拿走葉文潔整理的信件後，造成葉文潔遇到什麼麻煩？
+
+Keyword Extraction Agent:
+白沐霖, 葉文潔, 信件, 麻煩
+
+Question Extraction Agent:
+白沐霖拿走葉文潔整理的信件後，葉文潔遇到了什麼麻煩？
+
+向量檢索用查詢：
+白沐霖 葉文潔 信件 麻煩
+
+檢索來源 Top 5：
+1. three-body-1.txt / 2.寂靜的春天兩年以後，大興安嶺。 / part 9 / score=0.6517, embedding=0.6517
+2. three-body-1.txt / 2.寂靜的春天兩年以後，大興安嶺。 / part 7 / score=0.6489, embedding=0.6489
+3. three-body-1.txt / 16.三體問題 / part 1 / score=0.6013, embedding=0.6013
+4. three-body-1.txt / 4.三十八年後。 / part 13 / score=0.5860, embedding=0.5860
+5. three-body-1.txt / 4.三十八年後。 / part 11 / score=0.5810, embedding=0.5810
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.60s
+- question_extraction_agent: 1.08s
+- load_embeddings: 0.00s
+- retrieval: 0.02s
+- qa_agent: 4.97s
+- total: 6.67s
+
+Final Answer:
+根據提供的信息，白沐霖拿走葉文潔整理的信件後，葉文潔遇到了麻煩。具體來說，葉文潔被師政治部調查，因為她的信件被懷疑與《寂靜的春天》這本書有關，而該書在當時被視為反動的大毒草。張主任告知葉文潔，白沐霖只是受她之託把信帶到呼和浩特發出去，並不知道信的內容，但葉文潔因此陷入困境。
+
+來源編號：[來源 1] 章節：2.寂靜的春天兩年以後，大興安嶺。 / part 9
+
+```
+
+## D30Q03
+
+Question: 葉哲泰在批判會上為什麼不願迎合紅衛兵的指控？
+
+Elapsed: `5.811s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到他拒絕承認不符合事實的政治指控 (+2)
+- 提到因此在文革批判會上遭受迫害 (+1)
+
+Missed criteria:
+- 提到葉哲泰堅持科學或物理學立場
+
+Final Answer:
+
+```text
+無法從來源確認。根据提供的信息，葉哲泰在批判會上不願迎合紅衛兵的指控，但並未詳細說明原因。相關內容主要集中在葉哲泰作為反動學術權威在文革期間受到批鬥的情況，以及他在批判會上的態度和表現。
+```
+
+Full RAG Output:
+
+```text
+問題：葉哲泰在批判會上為什麼不願迎合紅衛兵的指控？
+
+Keyword Extraction Agent:
+葉哲泰, 批判會, 紅衛兵, 指控, 迎合
+
+Question Extraction Agent:
+葉哲泰在批判會上為什麼不願迎合紅衛兵的指控？
+
+向量檢索用查詢：
+葉哲泰 批判會 紅衛兵 指控 迎合
+
+檢索來源 Top 5：
+1. three-body-1.txt / 12. 紅岸之二 / part 3 / score=0.6089, embedding=0.6089
+2. three-body-1.txt / 1. 瘋狂年代中國，1967年。 / part 1 / score=0.5964, embedding=0.5964
+3. three-body-1.txt / 24.叛亂 / part 2 / score=0.5938, embedding=0.5938
+4. three-body-1.txt / 文件開頭 / metadata / score=0.5686, embedding=0.5686
+5. three-body-1.txt / 4.三十八年後。 / part 5 / score=0.5615, embedding=0.5615
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.65s
+- question_extraction_agent: 0.96s
+- load_embeddings: 0.00s
+- retrieval: 0.02s
+- qa_agent: 4.17s
+- total: 5.81s
+
+Final Answer:
+無法從來源確認。根据提供的信息，葉哲泰在批判會上不願迎合紅衛兵的指控，但並未詳細說明原因。相關內容主要集中在葉哲泰作為反動學術權威在文革期間受到批鬥的情況，以及他在批判會上的態度和表現。
+
+```
+
+## D30Q04
+
+Question: 葉文潔第一次進入紅岸基地時，楊衛寧說紅岸是什麼樣的項目？
+
+Elapsed: `6.164s`
+
+Score: `1 / 5`
+
+Matched criteria:
+- 提到紅岸基地或發射主控室 (+1)
+
+Missed criteria:
+- 提到紅岸是大型武器或軍事研究項目
+- 提到它的意義可能比原子彈或氫彈更大
+
+Final Answer:
+
+```text
+楊衛寧說紅岸工程具有如此高的保密級別的原因是因為探索外星文明當時還是一個邊緣化的基礎研究領域。紅岸工程的保密性是為了應對可能發生的技术突变，即技术突变有可能在极短的时间内突然出现，并且其影响力将超过其他领域技术突变总和的影响。來源編號：[1] 章節名稱：13. 紅岸之三 / part 1
+```
+
+Full RAG Output:
+
+```text
+問題：葉文潔第一次進入紅岸基地時，楊衛寧說紅岸是什麼樣的項目？
+
+Keyword Extraction Agent:
+葉文潔, 紅岸基地, 楊衛寧, 紅岸項目
+
+Question Extraction Agent:
+葉文潔第一次進入紅岸基地時，楊衛寧說紅岸是什麼樣的項目？
+
+向量檢索用查詢：
+葉文潔 紅岸基地 楊衛寧 紅岸項目
+
+檢索來源 Top 5：
+1. three-body-1.txt / 14. 紅岸之四 / part 1 / score=0.5391, embedding=0.5391
+2. three-body-1.txt / 22.紅岸之五 / part 1 / score=0.5061, embedding=0.5061
+3. three-body-1.txt / 13. 紅岸之三 / part 1 / score=0.4913, embedding=0.4913
+4. three-body-1.txt / 22.紅岸之五 / part 2 / score=0.4814, embedding=0.4814
+5. three-body-1.txt / 31.古箏行動 / part 2 / score=0.4813, embedding=0.4813
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.61s
+- question_extraction_agent: 0.95s
+- load_embeddings: 0.00s
+- retrieval: 0.02s
+- qa_agent: 4.57s
+- total: 6.16s
+
+Final Answer:
+楊衛寧說紅岸工程具有如此高的保密級別的原因是因為探索外星文明當時還是一個邊緣化的基礎研究領域。紅岸工程的保密性是為了應對可能發生的技术突变，即技术突变有可能在极短的时间内突然出现，并且其影响力将超过其他领域技术突变总和的影响。來源編號：[1] 章節名稱：13. 紅岸之三 / part 1
+
+```
+
+## D30Q05
+
+Question: 紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？
+
+Elapsed: `6.497s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到太陽能放大、增益或反射訊號 (+2)
+- 提到這與電波、訊號或發射有關 (+2)
+- 提到能用於星際或遠距離通訊 (+1)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+紅岸基地中，葉文潔發現太陽在星際通訊中有作用。她注意到太陽可以作為一個超級天線，通過它向宇宙中發射電波，這種電波的功率比地球上能夠使用的全部發射功率還要大上億倍。這項研究是為了證實這個猜想，葉文潔提出了將紅岸發射系統以超過閾值的功率直接向太陽發射電波的試驗。來源編號：[來源 1]、[來源 4]、[來源 5]。
+```
+
+Full RAG Output:
+
+```text
+問題：紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？
+
+Keyword Extraction Agent:
+紅岸基地, 葉文潔, 太陽, 星際通訊
+
+Question Extraction Agent:
+紅岸基地中，葉文潔發現太陽在星際通訊中有何作用？
+
+向量檢索用查詢：
+紅岸基地 葉文潔 太陽 星際通訊
+
+檢索來源 Top 5：
+1. three-body-1.txt / 32.監聽員 / part 6 / score=0.6695, embedding=0.6695
+2. three-body-1.txt / 22.紅岸之五 / part 7 / score=0.6436, embedding=0.6436
+3. three-body-1.txt / 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 7 / score=0.6372, embedding=0.6372
+4. three-body-1.txt / 22.紅岸之五 / part 2 / score=0.6323, embedding=0.6323
+5. three-body-1.txt / 22.紅岸之五 / part 6 / score=0.6104, embedding=0.6104
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.63s
+- question_extraction_agent: 1.07s
+- load_embeddings: 0.00s
+- retrieval: 0.02s
+- qa_agent: 4.77s
+- total: 6.50s
+
+Final Answer:
+紅岸基地中，葉文潔發現太陽在星際通訊中有作用。她注意到太陽可以作為一個超級天線，通過它向宇宙中發射電波，這種電波的功率比地球上能夠使用的全部發射功率還要大上億倍。這項研究是為了證實這個猜想，葉文潔提出了將紅岸發射系統以超過閾值的功率直接向太陽發射電波的試驗。來源編號：[來源 1]、[來源 4]、[來源 5]。
+
+```
+
+## D30Q06
+
+Question: 葉文潔回覆三體文明時，說「到這裏來吧」想讓三體文明做什麼？
+
+Elapsed: `5.343s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到她邀請三體文明來到地球 (+2)
+- 提到這與她對人類失望有關 (+1)
+
+Missed criteria:
+- 提到她希望外部文明介入、改造或拯救人類
+
+Final Answer:
+
+```text
+葉文潔回覆三體文明時說「到這裡來吧」，想讓三體文明做什麼？根據提供的信息並無法確認其具體目的。可能的解釋是希望三體文明能夠來到地球，但具體意圖需要更多上下文才能確定。
+```
+
+Full RAG Output:
+
+```text
+問題：葉文潔回覆三體文明時，說「到這裏來吧」想讓三體文明做什麼？
+
+Keyword Extraction Agent:
+葉文沛, 三體文明, 到這裏來, 邀請
+
+Question Extraction Agent:
+葉文潔回覆三體文明時，說「到這裡來吧」想讓三體文明做什麼？
+
+向量檢索用查詢：
+葉文沛 三體文明 到這裏來 邀請
+
+檢索來源 Top 5：
+1. three-body-1.txt / 32.監聽員 / part 3 / score=0.5740, embedding=0.5740
+2. three-body-1.txt / 29.地球三體運動 / part 3 / score=0.5538, embedding=0.5538
+3. three-body-1.txt / 32.監聽員 / part 8 / score=0.5290, embedding=0.5290
+4. three-body-1.txt / 32.監聽員 / part 9 / score=0.5220, embedding=0.5220
+5. three-body-1.txt / 29.地球三體運動 / part 1 / score=0.4966, embedding=0.4966
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.61s
+- question_extraction_agent: 1.18s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 3.52s
+- total: 5.34s
+
+Final Answer:
+葉文潔回覆三體文明時說「到這裡來吧」，想讓三體文明做什麼？根據提供的信息並無法確認其具體目的。可能的解釋是希望三體文明能夠來到地球，但具體意圖需要更多上下文才能確定。
+
+```
+
+## D30Q07
+
+Question: 楊冬遺書中最震撼汪淼和丁儀的核心句子是什麼意思？
+
+Elapsed: `6.643s`
+
+Score: `1 / 5`
+
+Matched criteria:
+- 提到楊冬或遺書 (+1)
+
+Missed criteria:
+- 提到物理學從來沒有存在過或物理學不存在
+- 提到基礎物理或科學信念崩潰
+
+Final Answer:
+
+```text
+根據提供的 retrieved chunks，楊冬遺書中最讓汪淼和丁儀震撼的核心句子是關於二氧化碳乾冰的描述。在汪淼耳邊低聲說："這是在下二氧化碳乾冰了。" 這句話來自來源 2 中的第7章三體 / part 14。
+
+來源：[來源 2] 文件：C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\data\raw\three-body-1.txt 章節：7.三體。 / part 14
+```
+
+Full RAG Output:
+
+```text
+問題：楊冬遺書中最震撼汪淼和丁儀的核心句子是什麼意思？
+
+Keyword Extraction Agent:
+楊冬遺書, 汪淼, 丁儀, 核心句子, 意義
+
+Question Extraction Agent:
+杨冬遗书中最让汪淼和丁仪震撼的核心句子是什么意思？
+
+向量檢索用查詢：
+楊冬遺書 汪淼 丁儀 核心句子 意義
+
+檢索來源 Top 5：
+1. three-body-1.txt / 12. 紅岸之二 / part 7 / score=0.6887, embedding=0.6887
+2. three-body-1.txt / 7.三體。 / part 14 / score=0.6350, embedding=0.6350
+3. three-body-1.txt / 8.葉文潔 / part 3 / score=0.6144, embedding=0.6144
+4. three-body-1.txt / 3.紅岸之一 / part 6 / score=0.5985, embedding=0.5985
+5. three-body-1.txt / 3.紅岸之一 / part 5 / score=0.5981, embedding=0.5981
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.65s
+- question_extraction_agent: 0.95s
+- load_embeddings: 0.00s
+- retrieval: 0.02s
+- qa_agent: 5.01s
+- total: 6.64s
+
+Final Answer:
+根據提供的 retrieved chunks，楊冬遺書中最讓汪淼和丁儀震撼的核心句子是關於二氧化碳乾冰的描述。在汪淼耳邊低聲說："這是在下二氧化碳乾冰了。" 這句話來自來源 2 中的第7章三體 / part 14。
+
+來源：[來源 2] 文件：C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\data\raw\three-body-1.txt 章節：7.三體。 / part 14
+
+```
+
+## D30Q08
+
+Question: 科學邊界成員認為當代物理學出了什麼問題？
+
+Elapsed: `7.623s`
+
+Score: `4 / 5`
+
+Matched criteria:
+- 提到物理學或基礎物理出現危機 (+2)
+- 提到實驗結果或科學規律不可靠 (+2)
+
+Missed criteria:
+- 提到科學信念或世界觀動搖
+
+Final Answer:
+
+```text
+科學邊界成員認為當代物理學遇到了很大的障礙和困難。根據丁儀的介紹，自上個世紀下半葉以來，物理學古典理論中的簡潔有力漸漸消失了，理論圖像變得越來越複雜、模糊和不確定，實驗驗證也越來越難，這標誌著物理學的前沿探索似乎遇到了很大的障礙和困難。科學邊界試圖開闢一條新的思維途徑，簡單地說就是試圖用科學的方法找出科學的局限性，試圖確定科學對自然界的認知在深度和精度上是否存在一條底線——底線之下是科學進入不了的。現代物理學的發展，似乎隱隱約約地觸到了這條底線。
+
+來源編號：[來源 1] 章節：4.三十八年後。 / part 10
+```
+
+Full RAG Output:
+
+```text
+問題：科學邊界成員認為當代物理學出了什麼問題？
+
+Keyword Extraction Agent:
+科學邊界成員, 當代物理學, 問題
+
+Question Extraction Agent:
+科學邊界成員認為當代物理學出了什麼問題？
+
+向量檢索用查詢：
+科學邊界成員 當代物理學 問題
+
+檢索來源 Top 5：
+1. three-body-1.txt / 4.三十八年後。 / part 10 / score=0.7048, embedding=0.7048
+2. three-body-1.txt / 33.智子 / part 22 / score=0.6153, embedding=0.6153
+3. three-body-1.txt / 33.智子 / part 5 / score=0.5978, embedding=0.5978
+4. three-body-1.txt / 33.智子 / part 23 / score=0.5766, embedding=0.5766
+5. three-body-1.txt / 6.射手和農場主 / part 2 / score=0.5673, embedding=0.5673
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.55s
+- question_extraction_agent: 0.95s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 6.08s
+- total: 7.62s
+
+Final Answer:
+科學邊界成員認為當代物理學遇到了很大的障礙和困難。根據丁儀的介紹，自上個世紀下半葉以來，物理學古典理論中的簡潔有力漸漸消失了，理論圖像變得越來越複雜、模糊和不確定，實驗驗證也越來越難，這標誌著物理學的前沿探索似乎遇到了很大的障礙和困難。科學邊界試圖開闢一條新的思維途徑，簡單地說就是試圖用科學的方法找出科學的局限性，試圖確定科學對自然界的認知在深度和精度上是否存在一條底線——底線之下是科學進入不了的。現代物理學的發展，似乎隱隱約約地觸到了這條底線。
+
+來源編號：[來源 1] 章節：4.三十八年後。 / part 10
+
+```
+
+## D30Q09
+
+Question: 汪淼看到倒數計時後，對方想逼他停止哪一類研究？
+
+Elapsed: `5.034s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到汪淼 (+1)
+- 提到停止奈米、納米、飛刃或材料研究 (+2)
+
+Missed criteria:
+- 提到倒數或倒計時
+
+Final Answer:
+
+```text
+汪淼看到倒数计时后，对方想逼他停止高強度納米材料的研究。此信息出自来源 [1] 的章节：6.射手和農場主 / part 18。
+```
+
+Full RAG Output:
+
+```text
+問題：汪淼看到倒數計時後，對方想逼他停止哪一類研究？
+
+Keyword Extraction Agent:
+汪淼, 倒數計時, 停止, 研究
+
+Question Extraction Agent:
+汪淼看到倒数计时后，对方想逼他停止哪种研究？
+
+向量檢索用查詢：
+汪淼 倒數計時 停止 研究
+
+檢索來源 Top 5：
+1. three-body-1.txt / 6.射手和農場主 / part 18 / score=0.5369, embedding=0.5369
+2. three-body-1.txt / 22.紅岸之五 / part 10 / score=0.5180, embedding=0.5180
+3. three-body-1.txt / 4.三十八年後。 / part 11 / score=0.5084, embedding=0.5084
+4. three-body-1.txt / 12. 紅岸之二 / part 5 / score=0.4981, embedding=0.4981
+5. three-body-1.txt / 25.雷志成、楊衛寧之死 / part 2 / score=0.4917, embedding=0.4917
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.57s
+- question_extraction_agent: 0.87s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 3.56s
+- total: 5.03s
+
+Final Answer:
+汪淼看到倒数计时后，对方想逼他停止高強度納米材料的研究。此信息出自来源 [1] 的章节：6.射手和農場主 / part 18。
+
+```
+
+## D30Q10
+
+Question: 汪淼和沙瑞山看到的宇宙閃爍，和哪種宇宙背景輻射觀測有關？
+
+Elapsed: `6.076s`
+
+Score: `4 / 5`
+
+Matched criteria:
+- 提到宇宙背景輻射 (+2)
+- 提到 3K 或微波背景 (+2)
+
+Missed criteria:
+- 提到觀測站、衛星或天文觀測
+
+Final Answer:
+
+```text
+汪淼和沙瑞山看到的宇宙閃爍，與宇宙3K微波背景輻射观测有關。沙瑞山提到，如果發生超過百分之一振幅的波動，會導致整個宇宙像一個壞了的日光燈管那樣閃爍。來源編號：[來源 2]，章節名稱：9.宇宙閃爛 / part 2。
+```
+
+Full RAG Output:
+
+```text
+問題：汪淼和沙瑞山看到的宇宙閃爍，和哪種宇宙背景輻射觀測有關？
+
+Keyword Extraction Agent:
+汪淼, 沙瑞山, 宇宙閃爍, 宇宙背景輻射
+
+Question Extraction Agent:
+汪淼和沙瑞山看到的宇宙閃爍，和哪种宇宙背景辐射观测有关？
+
+向量檢索用查詢：
+汪淼 沙瑞山 宇宙閃爍 宇宙背景輻射
+
+檢索來源 Top 5：
+1. three-body-1.txt / 23.紅岸之六 / part 5 / score=0.6880, embedding=0.6880
+2. three-body-1.txt / 9.宇宙閃爍 / part 2 / score=0.6719, embedding=0.6719
+3. three-body-1.txt / 9.宇宙閃爍 / part 1 / score=0.6694, embedding=0.6694
+4. three-body-1.txt / 9.宇宙閃爍 / part 7 / score=0.6634, embedding=0.6634
+5. three-body-1.txt / 9.宇宙閃爍 / part 3 / score=0.6528, embedding=0.6528
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.68s
+- question_extraction_agent: 1.08s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 4.26s
+- total: 6.08s
+
+Final Answer:
+汪淼和沙瑞山看到的宇宙閃爍，與宇宙3K微波背景輻射观测有關。沙瑞山提到，如果發生超過百分之一振幅的波動，會導致整個宇宙像一個壞了的日光燈管那樣閃爍。來源編號：[來源 2]，章節名稱：9.宇宙閃爛 / part 2。
+
+```
+
+## D30Q11
+
+Question: 三體遊戲中的「亂紀元」代表什麼樣的環境狀態？
+
+Elapsed: `6.923s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到太陽運行無規律或不可預測 (+2)
+- 提到嚴寒、酷熱或文明毀滅 (+2)
+- 提到脫水或乾倉 (+1)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+三體遊戲中的「亂紀元」代表一種極端的環境狀態。在這種狀態下，天氣變化無常，會突然出現酷熱或嚴寒的天氣。例如，在汪淼和周文王的旅程中，他們經歷了連續幾個寒冷的長夜後，可能會突然出現一個酷熱的白天。當大太陽升起時，溫度驟然升高，大地變為白熾狀態，凍土迅速融化成泥濘一片，並伴隨著強烈的熱浪和乾旱。汪淼和他的同伴們在這種環境下感到非常不適，甚至有人因無法忍受而選擇脫水以求生存。
+
+來源編號與章節名稱：[來源 1] / part 5
+```
+
+Full RAG Output:
+
+```text
+問題：三體遊戲中的「亂紀元」代表什麼樣的環境狀態？
+
+Keyword Extraction Agent:
+三體遊戲, 亂紀元, 環境状态
+
+Question Extraction Agent:
+三體遊戲中的「乱纪元」代表什么样的环境状态？
+
+向量檢索用查詢：
+三體遊戲 亂紀元 環境状态
+
+檢索來源 Top 5：
+1. three-body-1.txt / 7.三體。 / part 5 / score=0.5902, embedding=0.5902
+2. three-body-1.txt / 16.三體問題 / part 11 / score=0.5579, embedding=0.5579
+3. three-body-1.txt / 33.智子 / part 13 / score=0.5526, embedding=0.5526
+4. three-body-1.txt / 16.三體問題 / part 5 / score=0.5395, embedding=0.5395
+5. three-body-1.txt / 29.地球三體運動 / part 3 / score=0.5313, embedding=0.5313
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.55s
+- question_extraction_agent: 0.90s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 5.42s
+- total: 6.92s
+
+Final Answer:
+三體遊戲中的「亂紀元」代表一種極端的環境狀態。在這種狀態下，天氣變化無常，會突然出現酷熱或嚴寒的天氣。例如，在汪淼和周文王的旅程中，他們經歷了連續幾個寒冷的長夜後，可能會突然出現一個酷熱的白天。當大太陽升起時，溫度驟然升高，大地變為白熾狀態，凍土迅速融化成泥濘一片，並伴隨著強烈的熱浪和乾旱。汪淼和他的同伴們在這種環境下感到非常不適，甚至有人因無法忍受而選擇脫水以求生存。
+
+來源編號與章節名稱：[來源 1] / part 5
+
+```
+
+## D30Q12
+
+Question: 三體遊戲中的「恆紀元」對文明有什麼意義？
+
+Elapsed: `6.792s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到恆紀元是相對穩定的時期 (+2)
+- 提到文明可在此時復甦、發展或生活 (+2)
+- 可與亂紀元對比 (+1)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+三體遊戲中的「恆紀元」對文明有著重要的意義。根據《三體》遊戲的設定，在恆紀元中，行星圍繞著其中的一顆太陽做穩定運行，這時宇宙環境比較安定，適合文明發展。相反，在亂紀元中，由於三體運動的影響，行星會在三顆太陽的引力範圍內游移不定，此時宇宙環境極端多變，對文明構成巨大威脅。因此，「恆紀元」對於文明而言是生存和繁榮的重要條件之一。
+
+來源編號與章節名稱：[來源 4] 章節：7.三體 / part 5
+```
+
+Full RAG Output:
+
+```text
+問題：三體遊戲中的「恆紀元」對文明有什麼意義？
+
+Keyword Extraction Agent:
+三體遊戲, 恆紀元, 文明
+
+Question Extraction Agent:
+三體遊戲中的「恆紀元」對文明有什麼意義？
+
+向量檢索用查詢：
+三體遊戲 恆紀元 文明
+
+檢索來源 Top 5：
+1. three-body-1.txt / 29.地球三體運動 / part 3 / score=0.6003, embedding=0.6003
+2. three-body-1.txt / 15.三體、哥白尼、宇宙橄欖球、三日凌空 / part 2 / score=0.5893, embedding=0.5893
+3. three-body-1.txt / 18.聚會《三體》 / part 1 / score=0.5476, embedding=0.5476
+4. three-body-1.txt / 7.三體。 / part 5 / score=0.5360, embedding=0.5360
+5. three-body-1.txt / 32.監聽員 / part 1 / score=0.5332, embedding=0.5332
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.52s
+- question_extraction_agent: 0.96s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 5.27s
+- total: 6.79s
+
+Final Answer:
+三體遊戲中的「恆紀元」對文明有著重要的意義。根據《三體》遊戲的設定，在恆紀元中，行星圍繞著其中的一顆太陽做穩定運行，這時宇宙環境比較安定，適合文明發展。相反，在亂紀元中，由於三體運動的影響，行星會在三顆太陽的引力範圍內游移不定，此時宇宙環境極端多變，對文明構成巨大威脅。因此，「恆紀元」對於文明而言是生存和繁榮的重要條件之一。
+
+來源編號與章節名稱：[來源 4] 章節：7.三體 / part 5
+
+```
+
+## D30Q13
+
+Question: 三日凌空在三體遊戲中造成什麼後果？
+
+Elapsed: `4.696s`
+
+Score: `2 / 5`
+
+Matched criteria:
+- 提到天空有三顆太陽或三日凌空 (+2)
+
+Missed criteria:
+- 提到世界、文明或大地遭毀滅
+- 提到酷熱、燃燒或火海
+
+Final Answer:
+
+```text
+無法從來源確認。根據提供的信息，並未提及三日凌空在《三體》遊戲中造成何種后果。
+```
+
+Full RAG Output:
+
+```text
+問題：三日凌空在三體遊戲中造成什麼後果？
+
+Keyword Extraction Agent:
+三日凌空, 三體遊戲, 後果
+
+Question Extraction Agent:
+三日凌空在《三體》游戏中造成什么后果？
+
+向量檢索用查詢：
+三日凌空 三體遊戲 後果
+
+檢索來源 Top 5：
+1. three-body-1.txt / 7.三體。 / part 5 / score=0.5718, embedding=0.5718
+2. three-body-1.txt / 16.三體問題 / part 11 / score=0.5017, embedding=0.5017
+3. three-body-1.txt / 33.智子 / part 13 / score=0.4938, embedding=0.4938
+4. three-body-1.txt / 18.聚會《三體》 / part 1 / score=0.4842, embedding=0.4842
+5. three-body-1.txt / 16.三體問題 / part 5 / score=0.4733, embedding=0.4733
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.55s
+- question_extraction_agent: 0.91s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 3.19s
+- total: 4.69s
+
+Final Answer:
+無法從來源確認。根據提供的信息，並未提及三日凌空在《三體》遊戲中造成何種后果。
+
+```
+
+## D30Q14
+
+Question: 魏成研究三體問題時，為什麼認為它很難得到穩定解？
+
+Elapsed: `6.837s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到三體問題或三個天體 (+2)
+- 提到計算、數學或模型 (+1)
+
+Missed criteria:
+- 提到運動混沌、無規律或不可預測
+
+Final Answer:
+
+```text
+魏成研究三体问题时认为很难得到稳定解的原因是，三体问题在数学上不可解。庞加萊曾证明了三体问题的不可解性，并从三体问题出发，在微分方程问题上创造了新的数学方法。（來源 2, 章節：16.三體問題 / part 6）此外，进化的演算法虽然能够找到一百多种稳定状态，但要精确预测三体系统在任何时间断面的运动状态仍然非常困难。因此，魏成认为即使找到了一种新的计算方法，现有的计算机也无法满足需求。（來源 1, 章節：16.三體問題 / part 11）
+```
+
+Full RAG Output:
+
+```text
+問題：魏成研究三體問題時，為什麼認為它很難得到穩定解？
+
+Keyword Extraction Agent:
+魏成, 三體問題, 穩定解
+
+Question Extraction Agent:
+魏成研究三体问题时，为什么认为很难得到稳定解？
+
+向量檢索用查詢：
+魏成 三體問題 穩定解
+
+檢索來源 Top 5：
+1. three-body-1.txt / 16.三體問題 / part 11 / score=0.6004, embedding=0.6004
+2. three-body-1.txt / 16.三體問題 / part 6 / score=0.5285, embedding=0.5285
+3. three-body-1.txt / 16.三體問題 / part 7 / score=0.5278, embedding=0.5278
+4. three-body-1.txt / 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 6 / score=0.5252, embedding=0.5252
+5. three-body-1.txt / 33.智子 / part 13 / score=0.5226, embedding=0.5226
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.51s
+- question_extraction_agent: 0.87s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 5.41s
+- total: 6.84s
+
+Final Answer:
+魏成研究三体问题时认为很难得到稳定解的原因是，三体问题在数学上不可解。庞加萊曾证明了三体问题的不可解性，并从三体问题出发，在微分方程问题上创造了新的数学方法。（來源 2, 章節：16.三體問題 / part 6）此外，进化的演算法虽然能够找到一百多种稳定状态，但要精确预测三体系统在任何时间断面的运动状态仍然非常困难。因此，魏成认为即使找到了一种新的计算方法，现有的计算机也无法满足需求。（來源 1, 章節：16.三體問題 / part 11）
+
+```
+
+## D30Q15
+
+Question: 申玉菲為什麼一直要求魏成繼續研究三體問題？
+
+Elapsed: `5.325s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到申玉菲或魏成 (+1)
+- 提到研究三體問題或找出規律 (+2)
+
+Missed criteria:
+- 提到這關係到三體文明或其世界命運
+
+Final Answer:
+
+```text
+申玉菲一直要求魏成繼續研究三體問題的原因是因為她認為解決三體問題的進化演算法需要巨大的計算量，而這需要使用大型計算機。當時魏成正在寺廟裡用紙筆進行研究，缺乏足夠的計算資源。來源編號：[來源 3] / part 7
+```
+
+Full RAG Output:
+
+```text
+問題：申玉菲為什麼一直要求魏成繼續研究三體問題？
+
+Keyword Extraction Agent:
+申玉菲, 魏成, 三體問題
+
+Question Extraction Agent:
+申玉菲為什麼一直要求魏成繼續研究三體問題？
+
+向量檢索用查詢：
+申玉菲 魏成 三體問題
+
+檢索來源 Top 5：
+1. three-body-1.txt / 17.三體、牛頓、馮。諾依曼、秦始皇、三日連珠《三體》 / part 6 / score=0.5797, embedding=0.5797
+2. three-body-1.txt / 16.三體問題 / part 6 / score=0.5525, embedding=0.5525
+3. three-body-1.txt / 16.三體問題 / part 7 / score=0.5429, embedding=0.5429
+4. three-body-1.txt / 16.三體問題 / part 14 / score=0.5375, embedding=0.5375
+5. three-body-1.txt / 33.智子 / part 13 / score=0.5357, embedding=0.5357
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.53s
+- question_extraction_agent: 0.86s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 3.89s
+- total: 5.32s
+
+Final Answer:
+申玉菲一直要求魏成繼續研究三體問題的原因是因為她認為解決三體問題的進化演算法需要巨大的計算量，而這需要使用大型計算機。當時魏成正在寺廟裡用紙筆進行研究，缺乏足夠的計算資源。來源編號：[來源 3] / part 7
+
+```
+
+## D30Q16
+
+Question: 三體文明為什麼需要尋找新的生存世界？
+
+Elapsed: `6.639s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到三顆太陽或三體星系不穩定 (+2)
+- 提到文明面臨毀滅或生存危機 (+2)
+- 提到地球、太陽系或新世界 (+1)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+三體文明需要尋找新的生存世界，因為他們處於生存危機中。根據來源 1 中的內容，三體文明對生存空間的佔有慾非常強烈而無止境，無法與地球人共存，只能毀滅地球文明以完全佔有那個行星系的生存空間。此外，來源 5 提到地球三體叛軍中的拯救派希望拯救主（即三體文明）在三個太陽的半人馬座星系生存下去，避免其對太陽系的人侵，這也是三體文明尋找新生存世界的另一個原因。
+
+來源：[來源 1] 章節：32.監聽員 / part 8；[來源 5] 章節：29.地球三體運動 / part 1
+```
+
+Full RAG Output:
+
+```text
+問題：三體文明為什麼需要尋找新的生存世界？
+
+Keyword Extraction Agent:
+三體文明, 生存世界
+
+Question Extraction Agent:
+三體文明为什么需要寻找新的生存世界？
+
+向量檢索用查詢：
+三體文明 生存世界
+
+檢索來源 Top 5：
+1. three-body-1.txt / 32.監聽員 / part 8 / score=0.6988, embedding=0.6988
+2. three-body-1.txt / 32.監聽員 / part 9 / score=0.6811, embedding=0.6811
+3. three-body-1.txt / 29.地球三體運動 / part 3 / score=0.6500, embedding=0.6500
+4. three-body-1.txt / 32.監聽員 / part 3 / score=0.6284, embedding=0.6284
+5. three-body-1.txt / 29.地球三體運動 / part 1 / score=0.6217, embedding=0.6217
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.45s
+- question_extraction_agent: 0.76s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 5.39s
+- total: 6.64s
+
+Final Answer:
+三體文明需要尋找新的生存世界，因為他們處於生存危機中。根據來源 1 中的內容，三體文明對生存空間的佔有慾非常強烈而無止境，無法與地球人共存，只能毀滅地球文明以完全佔有那個行星系的生存空間。此外，來源 5 提到地球三體叛軍中的拯救派希望拯救主（即三體文明）在三個太陽的半人馬座星系生存下去，避免其對太陽系的人侵，這也是三體文明尋找新生存世界的另一個原因。
+
+來源：[來源 1] 章節：32.監聽員 / part 8；[來源 5] 章節：29.地球三體運動 / part 1
+
+```
+
+## D30Q17
+
+Question: 三體艦隊出發前往的目標大致是哪裡？
+
+Elapsed: `5.816s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到地球或太陽系 (+2)
+- 提到艦隊或遠征 (+1)
+
+Missed criteria:
+- 提到距離約四光年
+
+Final Answer:
+
+```text
+三體艦隊出發前往的目標大致是銀河系的另一端。根據來源 2 中的內容，在八萬五千三體時（約8.6個地球年）後，元首下令召開三體世界全體執政官緊急會議，並提到「也許，目標處於千萬光時之外，甚至在銀河系的另一端」。因此，三體艦隊的大致目標是銀河系的另一端。來源編號：[2] 33.智子 / part 1
+```
+
+Full RAG Output:
+
+```text
+問題：三體艦隊出發前往的目標大致是哪裡？
+
+Keyword Extraction Agent:
+三體艦隊, 目標
+
+Question Extraction Agent:
+三體艦隊出發前往的目標大致是哪裡？
+
+向量檢索用查詢：
+三體艦隊 目標
+
+檢索來源 Top 5：
+1. three-body-1.txt / 31.古箏行動 / part 2 / score=0.5319, embedding=0.5319
+2. three-body-1.txt / 33.智子 / part 1 / score=0.4919, embedding=0.4919
+3. three-body-1.txt / 3.紅岸之一 / part 4 / score=0.4647, embedding=0.4647
+4. three-body-1.txt / 33.智子 / part 3 / score=0.4608, embedding=0.4608
+5. three-body-1.txt / 29.地球三體運動 / part 2 / score=0.4525, embedding=0.4525
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.44s
+- question_extraction_agent: 0.77s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 4.57s
+- total: 5.81s
+
+Final Answer:
+三體艦隊出發前往的目標大致是銀河系的另一端。根據來源 2 中的內容，在八萬五千三體時（約8.6個地球年）後，元首下令召開三體世界全體執政官緊急會議，並提到「也許，目標處於千萬光時之外，甚至在銀河系的另一端」。因此，三體艦隊的大致目標是銀河系的另一端。來源編號：[2] 33.智子 / part 1
+
+```
+
+## D30Q18
+
+Question: 地球三體組織為什麼被稱為精神貴族組織？
+
+Elapsed: `5.851s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到地球三體組織或三體叛軍 (+1)
+- 提到成員多是高級知識階層或精英 (+2)
+- 提到他們站在人類之外思考或背叛人類 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+地球三體組織被稱為精神貴族組織的原因是因為其成員多來自高級知識階層，也有相當一部分政界和經濟界的精英。這些知識精英對人類文明的負面有著全面深刻的認知，並且對於人類之外的另一個文明產生了巨大的吸引力，使他們極易對三體文明產生種種美好的幻想。因此，地球三體叛軍被視為精神貴族組織。
+
+來源：[來源 2] - 章節：29. 地球三體運動 / part 1
+```
+
+Full RAG Output:
+
+```text
+問題：地球三體組織為什麼被稱為精神貴族組織？
+
+Keyword Extraction Agent:
+地球三體組織, 精神貴族組織
+
+Question Extraction Agent:
+地球三體組織為什麼被稱為精神貴族組織？
+
+向量檢索用查詢：
+地球三體組織 精神貴族組織
+
+檢索來源 Top 5：
+1. three-body-1.txt / 29.地球三體運動 / part 3 / score=0.6765, embedding=0.6765
+2. three-body-1.txt / 29.地球三體運動 / part 1 / score=0.6596, embedding=0.6596
+3. three-body-1.txt / 29.地球三體運動 / part 2 / score=0.5891, embedding=0.5891
+4. three-body-1.txt / 30.兩個質子 / part 1 / score=0.5773, embedding=0.5773
+5. three-body-1.txt / 29.地球三體運動 / part 4 / score=0.5616, embedding=0.5616
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.51s
+- question_extraction_agent: 0.83s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 4.46s
+- total: 5.85s
+
+Final Answer:
+地球三體組織被稱為精神貴族組織的原因是因為其成員多來自高級知識階層，也有相當一部分政界和經濟界的精英。這些知識精英對人類文明的負面有著全面深刻的認知，並且對於人類之外的另一個文明產生了巨大的吸引力，使他們極易對三體文明產生種種美好的幻想。因此，地球三體叛軍被視為精神貴族組織。
+
+來源：[來源 2] - 章節：29. 地球三體運動 / part 1
+
+```
+
+## D30Q19
+
+Question: 地球三體組織中的降臨派主張什麼？
+
+Elapsed: `6.317s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到降臨派或地球三體組織派別 (+1)
+- 提到希望三體文明降臨或來到地球 (+2)
+- 提到毀滅、懲罰或消滅人類 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+地球三體組織中的降臨派主張通過犧牲人類世界，使主在三個太陽的半人馬座星系生存下去，避免其對太陽系的人侵。他們天真地以為，解決物理上的三體問題就能達到這一目標，同時拯救三體和地球兩個世界。然而，這種想法未必天真，因為三體文明本身也在相當長時間內抱有同樣的想法並努力解決三體問題。降臨派與拯救派之間存在尖銳的對立狀態，但兩者都希望通過不同的方式使主生存下去。
+
+來源編號：[來源 1] 章節名稱：29.地球三體運動 / part 4
+```
+
+Full RAG Output:
+
+```text
+問題：地球三體組織中的降臨派主張什麼？
+
+Keyword Extraction Agent:
+地球三體組織, 降臨派
+
+Question Extraction Agent:
+地球三體組織中的降臨派主張什麼？
+
+向量檢索用查詢：
+地球三體組織 降臨派
+
+檢索來源 Top 5：
+1. three-body-1.txt / 29.地球三體運動 / part 4 / score=0.6612, embedding=0.6612
+2. three-body-1.txt / 33.智子 / part 6 / score=0.6508, embedding=0.6508
+3. three-body-1.txt / 19.三體、愛因斯坦、單擺、大撕裂汪淼 / part 9 / score=0.6295, embedding=0.6295
+4. three-body-1.txt / 33.智子 / part 3 / score=0.6051, embedding=0.6051
+5. three-body-1.txt / 33.智子 / part 23 / score=0.5838, embedding=0.5838
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.47s
+- question_extraction_agent: 0.84s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 4.96s
+- total: 6.32s
+
+Final Answer:
+地球三體組織中的降臨派主張通過犧牲人類世界，使主在三個太陽的半人馬座星系生存下去，避免其對太陽系的人侵。他們天真地以為，解決物理上的三體問題就能達到這一目標，同時拯救三體和地球兩個世界。然而，這種想法未必天真，因為三體文明本身也在相當長時間內抱有同樣的想法並努力解決三體問題。降臨派與拯救派之間存在尖銳的對立狀態，但兩者都希望通過不同的方式使主生存下去。
+
+來源編號：[來源 1] 章節名稱：29.地球三體運動 / part 4
+
+```
+
+## D30Q20
+
+Question: 地球三體組織中的拯救派希望三體文明帶來什麼？
+
+Elapsed: `5.518s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到拯救派或救贖派 (+1)
+- 提到希望三體文明改造、拯救或提升人類 (+2)
+- 提到對人類自身改善能力失望 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+地球三體組織中的拯救派希望三體文明能夠在三個太陽的半人馬座星系生存下去，避免對太陽系的人侵。他們天真地以為，解決物理上的三體問題就能達到這一目標，同時拯救三體和地球兩個世界。來源：[來源 1] - 章節：29. 地球三體運動 / part 3
+```
+
+Full RAG Output:
+
+```text
+問題：地球三體組織中的拯救派希望三體文明帶來什麼？
+
+Keyword Extraction Agent:
+地球三體組織, 拯救派, 三體文明
+
+Question Extraction Agent:
+地球三體組織中的拯救派希望三體文明帶來什麼？
+
+向量檢索用查詢：
+地球三體組織 拯救派 三體文明
+
+檢索來源 Top 5：
+1. three-body-1.txt / 29.地球三體運動 / part 3 / score=0.6980, embedding=0.6980
+2. three-body-1.txt / 29.地球三體運動 / part 4 / score=0.6883, embedding=0.6883
+3. three-body-1.txt / 29.地球三體運動 / part 1 / score=0.6707, embedding=0.6707
+4. three-body-1.txt / 32.監聽員 / part 8 / score=0.6499, embedding=0.6499
+5. three-body-1.txt / 32.監聽員 / part 9 / score=0.6135, embedding=0.6135
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.56s
+- question_extraction_agent: 0.88s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 4.04s
+- total: 5.52s
+
+Final Answer:
+地球三體組織中的拯救派希望三體文明能夠在三個太陽的半人馬座星系生存下去，避免對太陽系的人侵。他們天真地以為，解決物理上的三體問題就能達到這一目標，同時拯救三體和地球兩個世界。來源：[來源 1] - 章節：29. 地球三體運動 / part 3
+
+```
+
+## D30Q21
+
+Question: 伊文斯的物種共產主義核心觀念是什麼？
+
+Elapsed: `7.806s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到伊文斯或物種共產主義 (+1)
+- 提到所有生命或物種生來平等 (+2)
+- 提到保護其他物種或反對人類中心 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+伊文斯的物種共產主義的核心觀念是對人類本性的絕望和仇恨。這種絕望最初源自現代文明導致的地球物種大滅絕，後來這種憎恨開始有了不同的出發點，並非只局限於環保和戰爭等問題，而是上升到了相當抽象的哲學高度。這些人認為他們為之服務的外星文明也未抱太多期望，他們的背叛僅源於對人類的絕望和仇恨。這句話已成為降臨派的座右銘：我們不知道外星文明是什麼樣子，但知道人類。
+
+來源編號與章節名稱：
+[來源 3] 文件：C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\data\raw\three-body-1.txt 章節：29.地球三體運動 / part 2
+```
+
+Full RAG Output:
+
+```text
+問題：伊文斯的物種共產主義核心觀念是什麼？
+
+Keyword Extraction Agent:
+伊文斯, 物種共產主義, 核心觀念
+
+Question Extraction Agent:
+伊文斯的物種共產主義的核心觀念是什麼？
+
+向量檢索用查詢：
+伊文斯 物種共產主義 核心觀念
+
+檢索來源 Top 5：
+1. three-body-1.txt / 26.無人懺悔 / part 18 / score=0.5882, embedding=0.5882
+2. three-body-1.txt / 1. 瘋狂年代中國，1967年。 / part 8 / score=0.5658, embedding=0.5658
+3. three-body-1.txt / 29.地球三體運動 / part 2 / score=0.5477, embedding=0.5477
+4. three-body-1.txt / 2.寂靜的春天兩年以後，大興安嶺。 / part 12 / score=0.5348, embedding=0.5348
+5. three-body-1.txt / 29.地球三體運動 / part 1 / score=0.5138, embedding=0.5138
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.60s
+- question_extraction_agent: 0.91s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 6.25s
+- total: 7.80s
+
+Final Answer:
+伊文斯的物種共產主義的核心觀念是對人類本性的絕望和仇恨。這種絕望最初源自現代文明導致的地球物種大滅絕，後來這種憎恨開始有了不同的出發點，並非只局限於環保和戰爭等問題，而是上升到了相當抽象的哲學高度。這些人認為他們為之服務的外星文明也未抱太多期望，他們的背叛僅源於對人類的絕望和仇恨。這句話已成為降臨派的座右銘：我們不知道外星文明是什麼樣子，但知道人類。
+
+來源編號與章節名稱：
+[來源 3] 文件：C:\Users\g83ej\Documents\Codex\2026-06-07\gpt5-5\outputs\RAG_Project\data\raw\three-body-1.txt 章節：29.地球三體運動 / part 2
+
+```
+
+## D30Q22
+
+Question: 伊文斯為什麼會支持建立第二紅岸基地？
+
+Elapsed: `4.198s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到伊文斯 (+1)
+- 提到他接受葉文潔講述的紅岸和三體世界 (+2)
+- 提到要與三體文明通訊或支持三體降臨 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+無法從來源確認。根據提供的信息，並未提及伊文斯支持建立第二紅岸基地的原因。
+```
+
+Full RAG Output:
+
+```text
+問題：伊文斯為什麼會支持建立第二紅岸基地？
+
+Keyword Extraction Agent:
+伊文斯, 支持, 建立, 第二紅岸基地
+
+Question Extraction Agent:
+伊文斯為什麼會支持建立第二紅岸基地？
+
+向量檢索用查詢：
+伊文斯 支持 建立 第二紅岸基地
+
+檢索來源 Top 5：
+1. three-body-1.txt / 22.紅岸之五 / part 1 / score=0.4895, embedding=0.4895
+2. three-body-1.txt / 26.無人懺悔 / part 23 / score=0.4511, embedding=0.4511
+3. three-body-1.txt / 31.古箏行動 / part 10 / score=0.4370, embedding=0.4370
+4. three-body-1.txt / 14. 紅岸之四 / part 1 / score=0.4320, embedding=0.4320
+5. three-body-1.txt / 22.紅岸之五 / part 7 / score=0.4286, embedding=0.4286
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.54s
+- question_extraction_agent: 0.79s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 2.82s
+- total: 4.20s
+
+Final Answer:
+無法從來源確認。根據提供的信息，並未提及伊文斯支持建立第二紅岸基地的原因。
+
+```
+
+## D30Q23
+
+Question: 古箏行動的核心做法是什麼？
+
+Elapsed: `6.238s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到古箏行動 (+1)
+- 提到切割審判日號或船體 (+2)
+
+Missed criteria:
+- 提到使用納米、奈米或飛刃材料
+
+Final Answer:
+
+```text
+古箏行動的核心做法是確保審判日號上三體信息的安全並奪取得它。在討論行動方案時，成員們提出了幾個可能的選擇，包括球狀閃電武器、神經毒氣和震蕩炸彈等，但這些方案都存在不足之處。因此，古箏行動需要找到一種方法，在攻擊行動中避免敵人刪除三體信息，同時又不能對其內部其他設施造成重大損壞。來源編號：[來源 2] 章節：31. 古箏行動 / part 2
+```
+
+Full RAG Output:
+
+```text
+問題：古箏行動的核心做法是什麼？
+
+Keyword Extraction Agent:
+古箏行動, 核心做法
+
+Question Extraction Agent:
+古箏行動的核心做法是什麼？
+
+向量檢索用查詢：
+古箏行動 核心做法
+
+檢索來源 Top 5：
+1. three-body-1.txt / 12. 紅岸之二 / part 7 / score=0.5671, embedding=0.5671
+2. three-body-1.txt / 31.古箏行動 / part 2 / score=0.5505, embedding=0.5505
+3. three-body-1.txt / 1. 瘋狂年代中國，1967年。 / part 5 / score=0.5371, embedding=0.5371
+4. three-body-1.txt / 1. 瘋狂年代中國，1967年。 / part 7 / score=0.5278, embedding=0.5278
+5. three-body-1.txt / 11.三體。墨子。 / part 6 / score=0.4998, embedding=0.4998
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.51s
+- question_extraction_agent: 0.74s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 4.95s
+- total: 6.24s
+
+Final Answer:
+古箏行動的核心做法是確保審判日號上三體信息的安全並奪取得它。在討論行動方案時，成員們提出了幾個可能的選擇，包括球狀閃電武器、神經毒氣和震蕩炸彈等，但這些方案都存在不足之處。因此，古箏行動需要找到一種方法，在攻擊行動中避免敵人刪除三體信息，同時又不能對其內部其他設施造成重大損壞。來源編號：[來源 2] 章節：31. 古箏行動 / part 2
+
+```
+
+## D30Q24
+
+Question: 審判日號上藏有什麼重要資料？
+
+Elapsed: `5.941s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到審判日號或船 (+1)
+- 提到與三體文明通訊或紅岸資料有關 (+2)
+
+Missed criteria:
+- 提到三體組織或 ETO 資料
+
+Final Answer:
+
+```text
+審判日號號上藏有重要的三體信息。根據文件中的內容，所有方案都必須確保一點：保證審判日號上三體信息的安全並奪取得它。此外，由於船體結構複雜且不為外界所熟知，因此要全面佔領和控制審判日號，同時在攻擊行動中避免敵人刪除三體信息，這項任務十分困難。來源編號：1, 章節名稱：31.古箏行動 / part 2
+```
+
+Full RAG Output:
+
+```text
+問題：審判日號上藏有什麼重要資料？
+
+Keyword Extraction Agent:
+審判日號, 重要資料
+
+Question Extraction Agent:
+審判日號上藏有哪些重要資料？
+
+向量檢索用查詢：
+審判日號 重要資料
+
+檢索來源 Top 5：
+1. three-body-1.txt / 31.古箏行動 / part 2 / score=0.5616, embedding=0.5616
+2. three-body-1.txt / 11.三體。墨子。 / part 6 / score=0.4416, embedding=0.4416
+3. three-body-1.txt / 7.三體。 / part 11 / score=0.4296, embedding=0.4296
+4. three-body-1.txt / 22.紅岸之五 / part 4 / score=0.4123, embedding=0.4123
+5. three-body-1.txt / 6.射手和農場主 / part 18 / score=0.4105, embedding=0.4105
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.50s
+- question_extraction_agent: 0.73s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 4.67s
+- total: 5.94s
+
+Final Answer:
+審判日號號上藏有重要的三體信息。根據文件中的內容，所有方案都必須確保一點：保證審判日號上三體信息的安全並奪取得它。此外，由於船體結構複雜且不為外界所熟知，因此要全面佔領和控制審判日號，同時在攻擊行動中避免敵人刪除三體信息，這項任務十分困難。來源編號：1, 章節名稱：31.古箏行動 / part 2
+
+```
+
+## D30Q25
+
+Question: 智子是由什麼改造成的？
+
+Elapsed: `4.205s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到智子 (+1)
+- 提到展開、改造或製造成智能工具 (+2)
+
+Missed criteria:
+- 提到質子
+
+Final Answer:
+
+```text
+無法從來源確認。根据提供的信息，没有提到智子是由什么改造成的。
+```
+
+Full RAG Output:
+
+```text
+問題：智子是由什麼改造成的？
+
+Keyword Extraction Agent:
+智子, 改造
+
+Question Extraction Agent:
+智子是由什麼改造成的？
+
+向量檢索用查詢：
+智子 改造
+
+檢索來源 Top 5：
+1. three-body-1.txt / 23.紅岸之六 / part 1 / score=0.5617, embedding=0.5617
+2. three-body-1.txt / 12. 紅岸之二 / part 3 / score=0.5458, embedding=0.5458
+3. three-body-1.txt / 18.聚會《三體》 / part 2 / score=0.5238, embedding=0.5238
+4. three-body-1.txt / 1. 瘋狂年代中國，1967年。 / part 6 / score=0.5029, embedding=0.5029
+5. three-body-1.txt / 1. 瘋狂年代中國，1967年。 / part 8 / score=0.4996, embedding=0.4996
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.43s
+- question_extraction_agent: 0.72s
+- load_embeddings: 0.00s
+- retrieval: 0.03s
+- qa_agent: 3.02s
+- total: 4.20s
+
+Final Answer:
+無法從來源確認。根据提供的信息，没有提到智子是由什么改造成的。
+
+```
+
+## D30Q26
+
+Question: 智子如何干擾地球的基礎科學？
+
+Elapsed: `6.978s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到智子或三體文明 (+1)
+- 提到干擾粒子加速器或高能物理實驗 (+2)
+- 提到阻礙、鎖死或破壞人類基礎科學 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+智子工程並不會直接干擾地球的基础科学。相反，三體文明通過智子工程和神跡計劃等手段，间接地限制了地球人在物質深層結構研究上的突破。這些措施包括：
+
+1. 利用智子在高能加速器中制造錯誤的撞擊結果（來源 4）。
+2. 建造大型粒子加速器，將其資源轉移到智子工程上，使地球上的物理學家無法窺見物質深處的秘密（來源 1, 3）。
+
+這些措施最終導致地球科學技術被鎖死在五維以下，無法產生本質突破。因此，智子工程並不會直接干擾地球的基础科学，而是通過其他方式间接地限制了其發展。（來源：[來源 1]、[來源 3]、[來源 4]）
+```
+
+Full RAG Output:
+
+```text
+問題：智子如何干擾地球的基礎科學？
+
+Keyword Extraction Agent:
+智子, 地球, 基礎科學, 干擾
+
+Question Extraction Agent:
+智子如何干扰地球的基础科学？
+
+向量檢索用查詢：
+智子 地球 基礎科學 干擾
+
+檢索來源 Top 5：
+1. three-body-1.txt / 33.智子 / part 4 / score=0.7558, embedding=0.7558
+2. three-body-1.txt / 33.智子 / part 23 / score=0.7013, embedding=0.7013
+3. three-body-1.txt / 33.智子 / part 5 / score=0.6976, embedding=0.6976
+4. three-body-1.txt / 33.智子 / part 22 / score=0.6787, embedding=0.6787
+5. three-body-1.txt / 4.三十八年後。 / part 12 / score=0.6519, embedding=0.6519
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.52s
+- question_extraction_agent: 0.71s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 5.70s
+- total: 6.98s
+
+Final Answer:
+智子工程並不會直接干擾地球的基础科学。相反，三體文明通過智子工程和神跡計劃等手段，间接地限制了地球人在物質深層結構研究上的突破。這些措施包括：
+
+1. 利用智子在高能加速器中制造錯誤的撞擊結果（來源 4）。
+2. 建造大型粒子加速器，將其資源轉移到智子工程上，使地球上的物理學家無法窺見物質深處的秘密（來源 1, 3）。
+
+這些措施最終導致地球科學技術被鎖死在五維以下，無法產生本質突破。因此，智子工程並不會直接干擾地球的基础科学，而是通過其他方式间接地限制了其發展。（來源：[來源 1]、[來源 3]、[來源 4]）
+
+```
+
+## D30Q27
+
+Question: 三體文明為什麼要遏制地球文明的科學發展？
+
+Elapsed: `6.164s`
+
+Score: `5 / 5`
+
+Matched criteria:
+- 提到三體文明或地球文明 (+1)
+- 提到害怕地球科技快速進步 (+2)
+- 提到避免三體艦隊到達時人類已能對抗 (+2)
+
+Missed criteria:
+- None
+
+Final Answer:
+
+```text
+三體文明要遏制地球文明的科學發展，主要是因為他們希望鎖死地球文明的科技水平，使其無法進一步發展。這將有助於確保地球文明在未來不會成為對三體文明構成威脅的力量。
+
+根據來源 5 中的內容，在建造智子工程時，元首提到「我們需要一個決定性的行動，徹底窒息地球的科學，使其鎖死在現有水平」。這表明三體文明希望通過智子工程等手段，阻止地球文明進行基礎科學的研究，從而限制其科技發展。
+
+來源編號：[來源 5] 章節：33.智子 / part 4
+```
+
+Full RAG Output:
+
+```text
+問題：三體文明為什麼要遏制地球文明的科學發展？
+
+Keyword Extraction Agent:
+三體文明, 地球文明, 科學發展, 遏制
+
+Question Extraction Agent:
+三體文明為什麼要遏制地球文明的科學發展？
+
+向量檢索用查詢：
+三體文明 地球文明 科學發展 遏制
+
+檢索來源 Top 5：
+1. three-body-1.txt / 32.監聽員 / part 9 / score=0.6949, embedding=0.6949
+2. three-body-1.txt / 33.智子 / part 5 / score=0.6946, embedding=0.6946
+3. three-body-1.txt / 32.監聽員 / part 8 / score=0.6930, embedding=0.6930
+4. three-body-1.txt / 29.地球三體運動 / part 4 / score=0.6820, embedding=0.6820
+5. three-body-1.txt / 33.智子 / part 4 / score=0.6769, embedding=0.6769
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.54s
+- question_extraction_agent: 0.80s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 4.78s
+- total: 6.16s
+
+Final Answer:
+三體文明要遏制地球文明的科學發展，主要是因為他們希望鎖死地球文明的科技水平，使其無法進一步發展。這將有助於確保地球文明在未來不會成為對三體文明構成威脅的力量。
+
+根據來源 5 中的內容，在建造智子工程時，元首提到「我們需要一個決定性的行動，徹底窒息地球的科學，使其鎖死在現有水平」。這表明三體文明希望通過智子工程等手段，阻止地球文明進行基礎科學的研究，從而限制其科技發展。
+
+來源編號：[來源 5] 章節：33.智子 / part 4
+
+```
+
+## D30Q28
+
+Question: 三體世界中的 1379 號監聽員為什麼要向地球發出警告？
+
+Elapsed: `4.899s`
+
+Score: `3 / 5`
+
+Matched criteria:
+- 提到 1379 號監聽員 (+1)
+- 提到他不希望三體文明佔領或毀滅地球 (+2)
+
+Missed criteria:
+- 提到他想給地球文明生存機會或拯救地球
+
+Final Answer:
+
+```text
+無法從來源確認。根据提供的信息，没有直接提到1379号监听员向地球发出警告的原因或内容。
+```
+
+Full RAG Output:
+
+```text
+問題：三體世界中的 1379 號監聽員為什麼要向地球發出警告？
+
+Keyword Extraction Agent:
+三體世界, 1379號監聽員, 地球, 警告
+
+Question Extraction Agent:
+三體世界中的1379號監聽員為什麼要向地球發出警告？
+
+向量檢索用查詢：
+三體世界 1379號監聽員 地球 警告
+
+檢索來源 Top 5：
+1. three-body-1.txt / 30.兩個質子 / part 1 / score=0.6488, embedding=0.6488
+2. three-body-1.txt / 33.智子 / part 1 / score=0.6455, embedding=0.6455
+3. three-body-1.txt / 33.智子 / part 3 / score=0.6358, embedding=0.6358
+4. three-body-1.txt / 33.智子 / part 14 / score=0.6197, embedding=0.6197
+5. three-body-1.txt / 33.智子 / part 2 / score=0.6001, embedding=0.6001
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.66s
+- question_extraction_agent: 1.04s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 3.14s
+- total: 4.90s
+
+Final Answer:
+無法從來源確認。根据提供的信息，没有直接提到1379号监听员向地球发出警告的原因或内容。
+
+```
+
+## D30Q29
+
+Question: 三體元首如何處置發出警告的 1379 號監聽員？
+
+Elapsed: `5.523s`
+
+Score: `1 / 5`
+
+Matched criteria:
+- 提到 1379 號監聽員或警告 (+1)
+
+Missed criteria:
+- 提到元首認定他有罪或是最大罪犯
+- 提到元首讓他自由或活著看到地球失去希望
+
+Final Answer:
+
+```text
+無法從來源確認。根據提供的信息，並未提及三體元首如何處理發出警告的1379號監聽員。相關內容主要集中在三體元首召見三體艦隊統帥討論關於向地球文明發射警告信息的事宜上，而非直接描述三體元首對1379號監聽員的處理方式。
+```
+
+Full RAG Output:
+
+```text
+問題：三體元首如何處置發出警告的 1379 號監聽員？
+
+Keyword Extraction Agent:
+三體, 元首, 處置, 警告, 監聽員, 1379號
+
+Question Extraction Agent:
+三體元首如何處理發出警告的1379號監聽員？
+
+向量檢索用查詢：
+三體 元首 處置 警告 監聽員 1379號
+
+檢索來源 Top 5：
+1. three-body-1.txt / 12. 紅岸之二 / part 9 / score=0.5835, embedding=0.5835
+2. three-body-1.txt / 32.監聽員 / part 10 / score=0.5749, embedding=0.5749
+3. three-body-1.txt / 30.兩個質子 / part 2 / score=0.5690, embedding=0.5690
+4. three-body-1.txt / 3.紅岸之一 / part 6 / score=0.5597, embedding=0.5597
+5. three-body-1.txt / 33.智子 / part 1 / score=0.5591, embedding=0.5591
+節點耗時：
+- load_index: 0.01s
+- keyword_extraction_agent: 0.72s
+- question_extraction_agent: 0.96s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 3.80s
+- total: 5.52s
+
+Final Answer:
+無法從來源確認。根據提供的信息，並未提及三體元首如何處理發出警告的1379號監聽員。相關內容主要集中在三體元首召見三體艦隊統帥討論關於向地球文明發射警告信息的事宜上，而非直接描述三體元首對1379號監聽員的處理方式。
+
+```
+
+## D30Q30
+
+Question: 第一部結尾「你們是蟲子」這句話對人類代表什麼打擊？
+
+Elapsed: `4.537s`
+
+Score: `0 / 5`
+
+Matched criteria:
+- None
+
+Missed criteria:
+- 提到三體文明或智子向人類傳達訊息
+- 提到把人類貶低為蟲子或弱小存在
+- 提到這對人類信心、尊嚴或抵抗意志造成打擊
+
+Final Answer:
+
+```text
+無法從來源確認。提供的片段中並未提及《阿凡達》電影中的相關內容。
+```
+
+Full RAG Output:
+
+```text
+問題：第一部結尾「你們是蟲子」這句話對人類代表什麼打擊？
+
+Keyword Extraction Agent:
+蟲子, 人類, 打擊
+
+Question Extraction Agent:
+在《阿凡達》第一部電影結尾中，「你們是蟲子」這句話對人類角色代表什麼打擊？
+
+向量檢索用查詢：
+蟲子 人類 打擊
+
+檢索來源 Top 5：
+1. three-body-1.txt / 30.兩個質子 / part 5 / score=0.5276, embedding=0.5276
+2. three-body-1.txt / 18.聚會《三體》 / part 5 / score=0.5045, embedding=0.5045
+3. three-body-1.txt / 26.無人懺悔 / part 4 / score=0.4948, embedding=0.4948
+4. three-body-1.txt / 31.古箏行動 / part 6 / score=0.4862, embedding=0.4862
+5. three-body-1.txt / 32.監聽員 / part 9 / score=0.4774, embedding=0.4774
+節點耗時：
+- load_index: 0.00s
+- keyword_extraction_agent: 0.48s
+- question_extraction_agent: 1.05s
+- load_embeddings: 0.00s
+- retrieval: 0.04s
+- qa_agent: 2.96s
+- total: 4.54s
+
+Final Answer:
+無法從來源確認。提供的片段中並未提及《阿凡達》電影中的相關內容。
+
+```

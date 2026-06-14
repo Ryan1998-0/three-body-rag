@@ -6,9 +6,10 @@ from typing import Mapping, Optional
 
 @dataclass(frozen=True)
 class RagConfig:
-    top_k: int = 3
-    chunk_size: int = 1800
-    chunk_stride: int = 900
+    top_k: int = 5
+    chunk_size: int = 1200
+    chunk_stride: int = 600
+    retrieval_candidate_k: int = 50
     keyword_weight: float = 0.3
     embedding_weight: float = 0.7
     metadata_boost_max: float = 0.18
@@ -26,6 +27,11 @@ class RagConfig:
             top_k=_int_value(values, "RAG_TOP_K", cls.top_k),
             chunk_size=_int_value(values, "RAG_CHUNK_SIZE", cls.chunk_size),
             chunk_stride=_int_value(values, "RAG_CHUNK_STRIDE", cls.chunk_stride),
+            retrieval_candidate_k=_int_value(
+                values,
+                "RAG_RETRIEVAL_CANDIDATE_K",
+                cls.retrieval_candidate_k,
+            ),
             keyword_weight=_float_value(values, "RAG_KEYWORD_WEIGHT", cls.keyword_weight),
             embedding_weight=_float_value(values, "RAG_EMBEDDING_WEIGHT", cls.embedding_weight),
             metadata_boost_max=_float_value(values, "RAG_METADATA_BOOST_MAX", cls.metadata_boost_max),
@@ -76,6 +82,7 @@ class RagConfig:
             top_k=max(1, int(self.top_k)),
             chunk_size=chunk_size,
             chunk_stride=chunk_stride,
+            retrieval_candidate_k=max(1, int(self.retrieval_candidate_k)),
             keyword_weight=keyword_weight,
             embedding_weight=embedding_weight,
             metadata_boost_max=max(0.0, float(self.metadata_boost_max)),

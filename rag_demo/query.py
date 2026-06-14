@@ -13,19 +13,22 @@ from rag_demo.entity_resolution import answer_entity_existence
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
 from rag_demo.evidence_policy import build_evidence_policy
 from rag_demo.index_store import load_index
+from rag_demo.keyword_extraction import extract_keywords
 from rag_demo.model_providers import ask_model
 from rag_demo.prompting import build_answer_prompt
+from rag_demo.qa_agent import answer_with_qa_agent
+from rag_demo.question_extraction import extract_real_question
 from rag_demo.context_summary import build_deterministic_context_summary
 from rag_demo.retrieval_planner import build_retrieval_plan
 from rag_demo.query_rewriter import rewrite_query_for_retrieval
-from rag_demo.retrieval import hybrid_search, keyword_search
+from rag_demo.retrieval import embedding_search, hybrid_search, keyword_search
 from rag_demo.retrieval_verifier import verify_retrieval
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
-def answer_question(question: str, model: str, top_k: int = 3) -> str:
+def answer_question(question: str, model: str, top_k: int = 5) -> str:
     total_started_at = perf_counter()
     timing = {}
     config = RagConfig.from_env()
@@ -40,196 +43,235 @@ def answer_question(question: str, model: str, top_k: int = 3) -> str:
         chunks = load_knowledge_base_chunks(kb_dir)
     timing["load_index"] = perf_counter() - started_at
 
-    section_titles = [str(chunk["title"]) for chunk in chunks]
     started_at = perf_counter()
-    rewritten_query = rewrite_query_for_retrieval(
+    keywords = extract_keywords(
         question,
         model=model,
-        section_titles=section_titles,
     )
-    retrieval_query = expand_query_with_aliases(
-        _select_retrieval_query(question, rewritten_query, chunks),
-        project_root=PROJECT_ROOT,
-    )
-    retrieval_plan = build_retrieval_plan(
-        question,
-        primary_query=retrieval_query,
-        rewritten_query=rewritten_query,
-        section_titles=section_titles,
-    )
-    timing["query_rewrite"] = perf_counter() - started_at
+    timing["keyword_extraction_agent"] = perf_counter() - started_at
 
+    started_at = perf_counter()
+    refined_question = extract_real_question(
+        question,
+        model=model,
+    )
+    timing["question_extraction_agent"] = perf_counter() - started_at
+
+    query_variants = _build_three_agent_query_variants(question, refined_question, keywords)
     embedding_path = index_dir / "embeddings.npy"
     embeddings = None
     if embedding_path.exists():
+        started_at = perf_counter()
         try:
-            started_at = perf_counter()
             embeddings = load_embedding_matrix(embedding_path)
             timing["load_embeddings"] = perf_counter() - started_at
-            started_at = perf_counter()
-            results = hybrid_search(
-                retrieval_query,
-                chunks,
-                embeddings=embeddings,
-                embed_query_fn=embed_query,
-                top_k=top_k,
-                keyword_weight=config.keyword_weight,
-                embedding_weight=config.embedding_weight,
-                metadata_boost_max=config.metadata_boost_max,
-            )
-            timing["retrieval"] = perf_counter() - started_at
         except Exception:
-            embeddings = None
-            started_at = perf_counter()
-            results = keyword_search(retrieval_query, chunks, top_k=top_k)
-            timing["retrieval"] = perf_counter() - started_at
-    else:
-        started_at = perf_counter()
-        results = keyword_search(retrieval_query, chunks, top_k=top_k)
-        timing["retrieval"] = perf_counter() - started_at
+            timing["load_embeddings"] = perf_counter() - started_at
 
     started_at = perf_counter()
-    planned_results = _planned_retrieval_results(
-        retrieval_plan,
-        chunks,
+    results = _hybrid_rerank_results(
+        query_variants=query_variants,
+        question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=chunks,
         embeddings=embeddings,
         top_k=top_k,
-        config=config,
+        candidate_k=config.retrieval_candidate_k,
     )
-    if planned_results:
-        results = merge_event_list_chunks(results, planned_results)
-    timing["planned_retrieval"] = perf_counter() - started_at
+    timing["retrieval"] = perf_counter() - started_at
 
     started_at = perf_counter()
-    event_results = find_event_list_chunks(question, chunks)
-    result_constrained_results = find_result_constrained_chunks(question, chunks)
-    structured_results = merge_event_list_chunks(event_results, result_constrained_results)
-    if structured_results:
-        if build_evidence_policy(question).result_only and result_constrained_results:
-            results = structured_results
-        else:
-            results = merge_event_list_chunks(structured_results, results)
-    timing["event_list_retrieval"] = perf_counter() - started_at
-
-    started_at = perf_counter()
-    sparse_results = _sparse_fact_retrieval_results(question, chunks)
-    if sparse_results:
-        results = merge_event_list_chunks(sparse_results, results)
-    timing["sparse_fact_retrieval"] = perf_counter() - started_at
-
-    started_at = perf_counter()
-    results = _diversify_retrieval_results(question, retrieval_query, chunks, results)
-    timing["evidence_diversification"] = perf_counter() - started_at
-
-    started_at = perf_counter()
-    context_summary = build_deterministic_context_summary(results, question=retrieval_plan.evidence_query)
-    timing["deterministic_evidence"] = perf_counter() - started_at
-
-    started_at = perf_counter()
-    entity_answer = answer_entity_existence(question, context_summary)
-    timing["entity_resolution"] = perf_counter() - started_at
-    if entity_answer is not None:
-        timing["total"] = perf_counter() - total_started_at
-        return _format_output(
-            question,
-            retrieval_query,
-            results,
-            entity_answer,
-            verification={
-                "is_related": True,
-                "confidence": 0.95,
-                "reason": "entity_resolution: structured entity evidence answered existence question",
-            },
-            timing=timing,
-            context_summary=context_summary,
-        )
-
-    started_at = perf_counter()
-    action_answer = answer_action_result(question, context_summary)
-    timing["action_result_resolution"] = perf_counter() - started_at
-    if action_answer is not None:
-        timing["total"] = perf_counter() - total_started_at
-        return _format_output(
-            question,
-            retrieval_query,
-            results,
-            action_answer,
-            verification={
-                "is_related": True,
-                "confidence": 0.95,
-                "reason": "action_result_resolution: action evidence found but success result is not explicit",
-            },
-            timing=timing,
-            context_summary=context_summary,
-        )
-
-    pre_verifier_answer = _answer_from_deterministic_narrative_evidence(question, context_summary)
-    if pre_verifier_answer is not None:
-        timing["verifier"] = 0.0
-        timing["answer_generation"] = 0.0
-        timing["total"] = perf_counter() - total_started_at
-        return _format_output(
-            question,
-            retrieval_query,
-            results,
-            pre_verifier_answer,
-            verification={
-                "is_related": True,
-                "confidence": 0.95,
-                "reason": "deterministic_evidence: sparse fact or narrative evidence directly supports the answer",
-            },
-            timing=timing,
-            context_summary=context_summary,
-        )
-
-    started_at = perf_counter()
-    verification = verify_retrieval(
-        retrieval_query,
-        results,
+    answer = answer_with_qa_agent(
+        original_question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=results,
         model=model,
-        evidence_summary=context_summary,
     )
-    timing["verifier"] = perf_counter() - started_at
-    if not verification["is_related"]:
-        timing["total"] = perf_counter() - total_started_at
-        return _format_output(
-            question,
-            retrieval_query,
-            results,
-            _build_source_insufficient_answer(verification),
-            verification=verification,
-            timing=timing,
-            context_summary=context_summary,
-        )
-
-    deterministic_answer = _answer_from_deterministic_narrative_evidence(question, context_summary)
-    if deterministic_answer is not None:
-        timing["answer_generation"] = 0.0
-        timing["total"] = perf_counter() - total_started_at
-        return _format_output(
-            question,
-            retrieval_query,
-            results,
-            deterministic_answer,
-            verification=verification,
-            timing=timing,
-            context_summary=context_summary,
-        )
-
-    prompt = build_answer_prompt(question, results, context_summary=context_summary)
-    started_at = perf_counter()
-    answer = ask_model(prompt, model=model)
-    timing["answer_generation"] = perf_counter() - started_at
+    timing["qa_agent"] = perf_counter() - started_at
     timing["total"] = perf_counter() - total_started_at
-    return _format_output(
+    return _format_three_agent_output(
         question,
-        retrieval_query,
+        query_variants,
+        keywords,
+        refined_question,
         results,
         answer,
-        verification=verification,
         timing=timing,
-        context_summary=context_summary,
     )
+
+
+def _build_three_agent_query_variants(question: str, refined_question: str, keywords):
+    keyword_query = " ".join(str(keyword).strip() for keyword in keywords if str(keyword).strip())
+    original_query = " ".join(str(question).split())
+    question_agent_query = " ".join(str(refined_question).split())
+    combined_query = " ".join(
+        item
+        for item in [
+            original_query,
+            question_agent_query,
+            keyword_query,
+        ]
+        if item
+    )
+    variants = [
+        {"name": "original", "query": original_query, "weight": 1.00},
+        {"name": "question_agent", "query": question_agent_query, "weight": 1.10},
+        {"name": "keywords", "query": keyword_query, "weight": 1.00},
+        {"name": "combined", "query": combined_query, "weight": 0.85},
+    ]
+
+    unique = []
+    seen = set()
+    for variant in variants:
+        query = str(variant["query"]).strip()
+        if not query or query in seen:
+            continue
+        seen.add(query)
+        unique.append({**variant, "query": query})
+    return unique
+
+
+def _hybrid_rerank_results(
+    query_variants,
+    question: str,
+    refined_question: str,
+    keywords,
+    chunks,
+    embeddings,
+    top_k: int,
+    candidate_k: int,
+):
+    candidates = {}
+    candidate_k = max(top_k, int(candidate_k or top_k))
+
+    for variant in query_variants:
+        query_text = variant["query"]
+        query_weight = float(variant.get("weight", 1.0))
+
+        keyword_results = keyword_search(query_text, chunks, top_k=candidate_k)
+        max_keyword_score = max((float(item.get("score", 0.0)) for item in keyword_results), default=1.0)
+        for rank, chunk in enumerate(keyword_results, start=1):
+            normalized_score = float(chunk.get("score", 0.0)) / max_keyword_score if max_keyword_score else 0.0
+            _add_hybrid_candidate_score(
+                candidates,
+                chunk,
+                score=query_weight * (0.58 * normalized_score + _reciprocal_rank_score(rank, 0.10)),
+                method=f"kw:{variant['name']}:{rank}",
+                keyword_score=float(chunk.get("score", 0.0)),
+            )
+
+        if embeddings is None:
+            continue
+
+        embedding_results = embedding_search(
+            query_text,
+            chunks,
+            embeddings=embeddings,
+            embed_query_fn=embed_query,
+            top_k=candidate_k,
+        )
+        embedding_scores = [float(item.get("embedding_score", 0.0)) for item in embedding_results]
+        min_embedding = min(embedding_scores, default=0.0)
+        max_embedding = max(embedding_scores, default=1.0)
+        span = max(max_embedding - min_embedding, 1e-9)
+        for rank, chunk in enumerate(embedding_results, start=1):
+            raw_embedding = float(chunk.get("embedding_score", 0.0))
+            normalized_score = (raw_embedding - min_embedding) / span
+            _add_hybrid_candidate_score(
+                candidates,
+                chunk,
+                score=query_weight * (0.32 * normalized_score + _reciprocal_rank_score(rank, 0.07)),
+                method=f"emb:{variant['name']}:{rank}",
+                embedding_score=raw_embedding,
+            )
+
+    _apply_rerank_lexical_coverage_boost(candidates, question, refined_question, keywords)
+    ranked = sorted(candidates.values(), key=lambda item: item["score"], reverse=True)
+    return [_strip_rerank_candidate_metadata(item) for item in ranked[:top_k]]
+
+
+def _add_hybrid_candidate_score(
+    candidates,
+    chunk,
+    score: float,
+    method: str,
+    keyword_score: float = 0.0,
+    embedding_score: float = 0.0,
+):
+    chunk_id = chunk["id"]
+    if chunk_id not in candidates:
+        candidate = dict(chunk)
+        candidate["score"] = 0.0
+        candidate["keyword_score"] = 0.0
+        candidate["embedding_score"] = 0.0
+        candidate["retrieval_methods"] = []
+        candidates[chunk_id] = candidate
+
+    candidate = candidates[chunk_id]
+    candidate["score"] += score
+    candidate["keyword_score"] = max(float(candidate.get("keyword_score", 0.0)), keyword_score)
+    candidate["embedding_score"] = max(float(candidate.get("embedding_score", 0.0)), embedding_score)
+    candidate["retrieval_methods"].append(method)
+
+
+def _reciprocal_rank_score(rank: int, weight: float) -> float:
+    return weight / max(rank, 1)
+
+
+def _apply_rerank_lexical_coverage_boost(candidates, question: str, refined_question: str, keywords) -> None:
+    terms = _relevant_rerank_terms(" ".join([question, refined_question, " ".join(keywords)]))
+    if not terms:
+        return
+    for candidate in candidates.values():
+        text = _compact_rerank_text(
+            f"{candidate.get('parent_title', '')} {candidate.get('title', '')} {candidate.get('content', '')}"
+        )
+        covered = sum(1 for term in terms if _compact_rerank_text(term) in text)
+        candidate["score"] += 0.16 * (covered / len(terms))
+
+
+def _relevant_rerank_terms(text: str):
+    raw_terms = re.findall(r"[A-Za-z0-9_.-]+|[\u4e00-\u9fff]{2,}", str(text))
+    stop_terms = {
+        "什麼",
+        "為什麼",
+        "如何",
+        "哪裡",
+        "哪種",
+        "問題",
+        "核心",
+        "主要",
+        "代表",
+        "得到",
+        "提到",
+        "造成",
+        "認為",
+        "需要",
+        "希望",
+    }
+    terms = []
+    for term in raw_terms:
+        cleaned = term.strip().lower()
+        if len(cleaned) < 2 or cleaned in stop_terms:
+            continue
+        terms.append(cleaned)
+    return list(dict.fromkeys(terms))[:24]
+
+
+def _compact_rerank_text(text: str) -> str:
+    return re.sub(r"\s+", "", str(text)).lower()
+
+
+def _strip_rerank_candidate_metadata(candidate):
+    result = dict(candidate)
+    result["retrieval_method"] = "hybrid_rerank"
+    methods = result.get("retrieval_methods", [])
+    result["rerank_trace"] = ", ".join(methods[:10])
+    if len(methods) > 10:
+        result["rerank_trace"] += f", +{len(methods) - 10} more"
+    return result
 
 
 def _build_source_insufficient_answer(verification) -> str:
@@ -1256,11 +1298,64 @@ is_related={verification["is_related"]}, confidence={verification["confidence"]}
 """
 
 
+def _format_three_agent_output(
+    question: str,
+    query_variants,
+    keywords,
+    refined_question: str,
+    results,
+    answer: str,
+    timing=None,
+) -> str:
+    source_lines = []
+    for index, chunk in enumerate(results, start=1):
+        detail = f"score={chunk.get('score', 0)}"
+        if "embedding_score" in chunk:
+            detail = (
+                f"score={float(chunk.get('score', 0.0)):.4f}, "
+                f"keyword={float(chunk.get('keyword_score', 0.0)):.4f}, "
+                f"embedding={float(chunk['embedding_score']):.4f}"
+            )
+        if chunk.get("rerank_trace"):
+            detail = f"{detail}, trace={chunk['rerank_trace']}"
+        source_lines.append(
+            f"{index}. {Path(str(chunk['source'])).name} / {chunk['title']} / {detail}"
+        )
+
+    sources = "\n".join(source_lines) if source_lines else "沒有找到來源"
+    keyword_text = ", ".join(str(keyword) for keyword in keywords) if keywords else "無"
+    query_variant_text = "\n".join(
+        f"- {variant['name']}: {variant['query']}" for variant in query_variants
+    )
+    timing_text = _format_timing(timing or {})
+
+    return f"""問題：{question}
+
+Keyword Extraction Agent:
+{keyword_text}
+
+Question Extraction Agent:
+{refined_question}
+
+Hybrid Retrieval Query Variants:
+{query_variant_text}
+
+檢索來源 Top {len(results)}：
+{sources}
+{timing_text}
+
+Final Answer:
+{answer}
+"""
+
+
 def _format_timing(timing) -> str:
     if not timing:
         return ""
     preferred_order = [
         "load_index",
+        "keyword_extraction_agent",
+        "question_extraction_agent",
         "query_rewrite",
         "load_embeddings",
         "retrieval",
@@ -1274,6 +1369,7 @@ def _format_timing(timing) -> str:
         "verifier",
         "context_summary",
         "answer_generation",
+        "qa_agent",
         "general_fallback",
         "total",
     ]

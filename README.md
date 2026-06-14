@@ -371,23 +371,25 @@ http://127.0.0.1:8766
 
 ```text
 使用者原始問題
-→ Query Rewriter Agent
-   - 根據 system prompt 做 step by step 語意理解
-   - 產生「向量檢索用查詢」
-   - sanitize，避免 query drift 到無關章節
-→ Retrieval
-   - 對 chunks 做 keyword + embedding hybrid search
-   - 顯示 score / keyword_score / embedding_score
-→ Verifier Agent
-   - 驗證原始問題和 retrieval chunks 是否真的相關
-   - 若無關，走一般常識 fallback
-→ Prompt Formatting
-   - 將原始問題與 retrieval chunks 組合成完整 prompt
-→ Answer Agent
-   - 只根據 retrieval chunks 回答
-   - 可列來源，但不強制固定 1/2/3 格式
+→ Keyword Extraction Agent
+   - 抽取適合 knowledge base retrieval 的 keywords
+→ Question Extraction Agent
+   - 分析提問者真正想問的問題
+   - 輸出 refined question
+→ Hybrid Retrieval + Rerank
+   - 使用 original question、Question Extraction Agent output、keywords、combined query 四種 query variant
+   - 每種 query variant 先做 keyword candidate recall
+   - 如果 embeddings.npy 存在，也做 embedding candidate recall
+   - 預設先召回 top 50 candidates，再 rerank 成 top 5 chunks
+   - 如果 embeddings.npy 不存在或載入失敗，仍會用 pure keyword candidates rerank
+→ QA Agent
+   - 接收 original question
+   - 接收 Keyword Extraction Agent 輸出的 keywords
+   - 接收 Question Extraction Agent 輸出的 refined question
+   - 接收 retrieved top 5 chunks
+   - 只根據 retrieved chunks 產生 final answer
 → Output
-   - 顯示原始問題、向量檢索用查詢、檢索來源、Verifier 結果、Qwen 回答
+   - 顯示原始問題、keywords、refined question、hybrid query variants、檢索來源、final answer
 ```
 
 ### Agent 分工與 prompt 隔離
@@ -395,23 +397,20 @@ http://127.0.0.1:8766
 目前使用同一個 `qwen2.5:7b` 模型服務，但任務已切成獨立 agent call：
 
 ```text
-Query Rewriter Agent
-→ retrieval query 改寫，不回答使用者問題
+Keyword Extraction Agent
+→ 抽取 retrieval keywords，不回答使用者問題
 
-Verifier Agent
-→ 判斷問題和 retrieved chunks 是否相關，不回答使用者問題
+Question Extraction Agent
+→ 分析提問者真正想問的問題，不回答使用者問題
 
-Answer Agent
-→ 只根據 retrieval chunks 回答
-
-General Fallback Agent
-→ 當 verifier 判斷 knowledge base 沒有相關來源時，明確標示改用一般常識回答
+QA Agent
+→ 整合 original question、keywords、refined question 與 retrieved chunks，產生 final answer
 ```
 
 這是：
 
 ```text
-同模型，多角色，prompt 隔離，memory 不共享，序列執行
+同模型，多角色，prompt 隔離，memory 不共享，序列執行；retrieval 預設取 top 5 chunks
 ```
 
 不是：
