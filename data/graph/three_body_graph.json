@@ -1,0 +1,166 @@
+{
+  "entities": [
+    {
+      "id": "person:ye-wenjie",
+      "name": "葉文潔",
+      "type": "Person",
+      "aliases": ["葉老師", "楊冬的母親"]
+    },
+    {
+      "id": "person:shen-yufei",
+      "name": "申玉菲",
+      "type": "Person",
+      "aliases": []
+    },
+    {
+      "id": "person:pan-han",
+      "name": "潘寒",
+      "type": "Person",
+      "aliases": []
+    },
+    {
+      "id": "person:evans",
+      "name": "伊文斯",
+      "type": "Person",
+      "aliases": ["麥克伊文斯", "麥克・伊文斯", "Mike Evans"]
+    },
+    {
+      "id": "person:listener-1379",
+      "name": "1379號監聽員",
+      "type": "Person",
+      "aliases": ["1379號", "監聽員"]
+    },
+    {
+      "id": "org:eto",
+      "name": "地球三體組織",
+      "type": "Organization",
+      "aliases": ["ETO", "地球三體叛軍", "三體組織", "地球三體運動"]
+    },
+    {
+      "id": "org:adventists",
+      "name": "降臨派",
+      "type": "Organization",
+      "aliases": []
+    },
+    {
+      "id": "org:salvationists",
+      "name": "拯救派",
+      "type": "Organization",
+      "aliases": []
+    },
+    {
+      "id": "location:red-coast-base",
+      "name": "紅岸基地",
+      "type": "Location",
+      "aliases": ["紅岸工程", "紅岸"]
+    },
+    {
+      "id": "event:guzheng-operation",
+      "name": "古箏行動",
+      "type": "Event",
+      "aliases": []
+    },
+    {
+      "id": "event:first-trisolaran-reply",
+      "name": "第一次三體回訊",
+      "type": "Event",
+      "aliases": ["第一次收到外星回訊", "不要回答警告"]
+    },
+    {
+      "id": "object:flying-blade",
+      "name": "飛刃",
+      "type": "Object",
+      "aliases": ["納米絲", "納米材料", "奈米材料"]
+    },
+    {
+      "id": "object:sophon",
+      "name": "智子",
+      "type": "Object",
+      "aliases": ["智子工程", "質子計算機"]
+    },
+    {
+      "id": "concept:human-basic-science",
+      "name": "人類基礎科學",
+      "type": "Concept",
+      "aliases": ["基礎科學", "地球文明科學"]
+    },
+    {
+      "id": "concept:destroy-humanity",
+      "name": "毀滅人類",
+      "type": "Concept",
+      "aliases": ["毀滅全人類", "懲罰人類"]
+    }
+  ],
+  "relations": [
+    {
+      "source": "org:eto",
+      "type": "HAS_FACTION",
+      "target": "org:adventists",
+      "supporting_chunk_ids": ["three-body-1.txt::239"],
+      "confidence": 1.0
+    },
+    {
+      "source": "org:eto",
+      "type": "HAS_FACTION",
+      "target": "org:salvationists",
+      "supporting_chunk_ids": ["three-body-1.txt::239"],
+      "confidence": 1.0
+    },
+    {
+      "source": "person:shen-yufei",
+      "type": "MEMBER_OF",
+      "target": "org:salvationists",
+      "supporting_chunk_ids": ["three-body-1.txt::190"],
+      "confidence": 1.0
+    },
+    {
+      "source": "person:pan-han",
+      "type": "MEMBER_OF",
+      "target": "org:adventists",
+      "supporting_chunk_ids": ["three-body-1.txt::189", "three-body-1.txt::190"],
+      "confidence": 0.9
+    },
+    {
+      "source": "person:ye-wenjie",
+      "type": "LEADS",
+      "target": "org:eto",
+      "supporting_chunk_ids": ["three-body-1.txt::238"],
+      "confidence": 0.9
+    },
+    {
+      "source": "person:ye-wenjie",
+      "type": "LOCATED_IN",
+      "target": "location:red-coast-base",
+      "supporting_chunk_ids": ["three-body-1.txt::211"],
+      "confidence": 0.8
+    },
+    {
+      "source": "person:listener-1379",
+      "type": "PARTICIPATED_IN",
+      "target": "event:first-trisolaran-reply",
+      "supporting_chunk_ids": ["three-body-1.txt::262", "three-body-1.txt::267"],
+      "confidence": 1.0
+    },
+    {
+      "source": "event:guzheng-operation",
+      "type": "USES",
+      "target": "object:flying-blade",
+      "supporting_chunk_ids": ["three-body-1.txt::251", "three-body-1.txt::252", "three-body-1.txt::253"],
+      "confidence": 0.9
+    },
+    {
+      "source": "object:sophon",
+      "type": "BLOCKS",
+      "target": "concept:human-basic-science",
+      "supporting_chunk_ids": ["three-body-1.txt::274", "three-body-1.txt::285", "three-body-1.txt::286"],
+      "confidence": 0.9
+    },
+    {
+      "source": "org:adventists",
+      "type": "HAS_GOAL",
+      "target": "concept:destroy-humanity",
+      "supporting_chunk_ids": ["three-body-1.txt::189", "three-body-1.txt::239"],
+      "confidence": 1.0
+    }
+  ]
+}

@@ -27,7 +27,10 @@ from rag_demo.qa_agent import build_qa_prompt
 from rag_demo.question_extraction import parse_question_output
 from rag_demo.context_summary import build_context_summary_prompt, build_deterministic_context_summary, extract_deterministic_evidence, summarize_retrieved_context
 from rag_demo.general_answer import build_general_answer_prompt
-from rag_demo.query import _answer_from_deterministic_narrative_evidence, _bm25_dense_retrieval_query, _build_source_insufficient_answer, _build_sparse_dense_original_refined_query_variants, _build_sparse_dense_refined_query_variants, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _diversify_retrieval_results, _expand_parent_chunks, _format_output, _format_three_agent_output, _hybrid_rerank_results, _rrf_merge_ranked_results, _rrf_parent_context_results, _select_retrieval_query, answer_question
+from rag_demo.graph_entities import extract_chunk_entities, extract_query_entities
+from rag_demo.graph_retrieval import retrieve_graph_context
+from rag_demo.query_classifier import classify_query
+from rag_demo.query import _answer_from_deterministic_narrative_evidence, _bm25_dense_retrieval_query, _build_source_insufficient_answer, _build_sparse_dense_original_refined_query_variants, _build_sparse_dense_refined_query_variants, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _diversify_retrieval_results, _expand_parent_chunks, _explicit_metadata_filters, _format_output, _format_three_agent_output, _hybrid_rerank_results, _rrf_merge_ranked_results, _rrf_parent_context_results, _select_retrieval_query, answer_question
 from rag_demo.query_rewriter import build_rewrite_prompt, extract_retrieval_query, sanitize_retrieval_query
 from rag_demo.retrieval_planner import build_retrieval_plan, extract_focus_terms
 from rag_demo.retrieval_verifier import build_verifier_prompt, extract_evidence_candidates, parse_verifier_output
@@ -1338,7 +1341,7 @@ Owner: Team B
         self.assertLessEqual(len(results), 5)
         self.assertGreaterEqual(len(results), 3)
         self.assertTrue(any(result["id"] == "c2" for result in results))
-        self.assertTrue(all(result["retrieval_method"] == "rrf_parent_context" for result in results))
+        self.assertTrue(all("rrf_parent_context" in result["retrieval_method"] for result in results))
 
     def test_rrf_parent_context_keeps_original_question_terms_when_rewrite_drops_them(self):
         chunks = [
@@ -1394,6 +1397,74 @@ Owner: Team B
 
         self.assertEqual(results[0]["id"], "original-hit")
 
+    def test_explicit_metadata_filters_extract_sequence_from_question(self):
+        chunks = [
+            {"id": "round5", "source": "avalon.txt", "chunk_index": 5, "parent_title": "Game", "title": "第5輪 / part 1", "content": "任務結果"},
+            {"id": "round8", "source": "avalon.txt", "chunk_index": 8, "parent_title": "Game", "title": "第8輪 / part 1", "content": "任務結果"},
+        ]
+
+        filters = _explicit_metadata_filters("第5輪的1、3任務結果是什麼？", chunks)
+
+        self.assertEqual(filters["sequence"], {"第5輪"})
+
+    def test_rrf_parent_context_applies_sequence_metadata_filter_before_retrieval(self):
+        chunks = [
+            {"id": "round5", "source": "avalon.txt", "chunk_index": 5, "parent_title": "Game", "title": "第5輪 / part 1", "content": "第5輪 1、3 任務成功。"},
+            {"id": "round8", "source": "avalon.txt", "chunk_index": 8, "parent_title": "Game", "title": "第8輪 / part 1", "content": "第8輪 1、3 任務結果 任務結果 任務結果。"},
+        ]
+
+        results = _rrf_parent_context_results(
+            question="第5輪的1、3任務結果是什麼？",
+            rewritten_query="第5輪 1 3 任務結果",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=2,
+            final_context_k=5,
+        )
+
+        self.assertEqual([result["id"] for result in results], ["round5"])
+
+    def test_rrf_parent_context_prefers_structured_result_chunks_for_result_only_questions(self):
+        chunks = [
+            {
+                "id": "noise",
+                "source": "avalon.txt",
+                "chunk_index": 1,
+                "parent_title": "Game",
+                "title": "第1輪 / part 1",
+                "content": "4號和5號反覆發言，討論很多但沒有任務結果。",
+            },
+            {
+                "id": "round2-result",
+                "source": "avalon.txt",
+                "chunk_index": 2,
+                "parent_title": "Game",
+                "title": "第2輪 / part 3",
+                "content": "任務：失敗，邪惡方得分\n出任務者：API AI 2、API AI 4\n失敗牌：API AI 4",
+            },
+            {
+                "id": "round3-result",
+                "source": "avalon.txt",
+                "chunk_index": 3,
+                "parent_title": "Game",
+                "title": "第3輪 / part 3",
+                "content": "任務：失敗，邪惡方得分\n出任務者：API AI 1、API AI 3、API AI 5\n失敗牌：API AI 5",
+            },
+        ]
+
+        results = _rrf_parent_context_results(
+            question="如果只看任務結果，4號和5號為什麼會被視為邪惡方？",
+            rewritten_query="只看任務結果 4號 5號",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=3,
+            final_context_k=5,
+        )
+
+        self.assertEqual([result["id"] for result in results[:2]], ["round2-result", "round3-result"])
+
     def test_bm25_dense_retrieval_query_is_original_question(self):
         query = _bm25_dense_retrieval_query(
             question="葉文潔後來被調到哪一個軍事基地工作？",
@@ -1401,6 +1472,130 @@ Owner: Team B
         )
 
         self.assertEqual(query, "葉文潔後來被調到哪一個軍事基地工作？")
+
+    def test_query_entity_extraction_uses_alias_records(self):
+        entities = extract_query_entities(
+            "申玉菲在 ETO 中屬於哪一派？",
+            alias_records=[
+                {"canonical": "申玉菲", "type": "person", "aliases": []},
+                {"canonical": "地球三體組織", "type": "organization", "aliases": ["ETO"]},
+            ],
+        )
+
+        self.assertEqual(
+            [(entity["name"], entity["type"]) for entity in entities],
+            [("申玉菲", "person"), ("地球三體組織", "organization")],
+        )
+
+    def test_chunk_entity_extraction_reads_chunk_text_and_metadata(self):
+        entities = extract_chunk_entities(
+            {
+                "title": "地球三體運動",
+                "parent_title": "Narrative Text",
+                "content": "申玉菲屬於拯救派，這是地球三體組織中的派別。",
+            },
+            alias_records=[
+                {"canonical": "申玉菲", "type": "person", "aliases": []},
+                {"canonical": "拯救派", "type": "organization", "aliases": []},
+            ],
+        )
+
+        self.assertEqual([entity["name"] for entity in entities], ["申玉菲", "拯救派"])
+
+    def test_query_classifier_routes_content_relation_and_hybrid_queries(self):
+        self.assertEqual(classify_query("黑暗森林理論是什麼？")["type"], "content")
+        self.assertEqual(classify_query("哪些人屬於 ETO？")["type"], "relation")
+        self.assertEqual(classify_query("葉文潔為什麼建立 ETO？")["type"], "hybrid")
+
+    def test_graph_retrieval_returns_supporting_chunks_for_relation_query(self):
+        chunks = [
+            {
+                "id": "support",
+                "source": "three-body.txt",
+                "chunk_index": 1,
+                "parent_title": "Narrative Text",
+                "title": "地球三體組織 / part 1",
+                "content": "申玉菲在內心深處是一名堅定的拯救派。",
+            },
+            {
+                "id": "noise",
+                "source": "three-body.txt",
+                "chunk_index": 2,
+                "parent_title": "Narrative Text",
+                "title": "三體遊戲 / part 1",
+                "content": "申玉菲玩三體遊戲。",
+            },
+        ]
+        graph = {
+            "entities": [
+                {"id": "person:shen-yufei", "name": "申玉菲", "type": "Person", "aliases": []},
+                {"id": "org:adventists", "name": "拯救派", "type": "Organization", "aliases": []},
+            ],
+            "relations": [
+                {
+                    "source": "person:shen-yufei",
+                    "target": "org:adventists",
+                    "type": "MEMBER_OF",
+                    "supporting_chunk_ids": ["support"],
+                    "confidence": 1.0,
+                }
+            ],
+        }
+
+        results = retrieve_graph_context("申玉菲屬於哪一派？", chunks, graph=graph)
+
+        self.assertEqual([result["id"] for result in results], ["support"])
+        self.assertEqual(results[0]["retrieval_method"], "graph")
+        self.assertIn("MEMBER_OF", results[0]["graph_trace"])
+
+    def test_rrf_parent_context_merges_graph_context_for_relation_query(self):
+        chunks = [
+            {
+                "id": "support",
+                "source": "three-body.txt",
+                "chunk_index": 1,
+                "parent_title": "Narrative Text",
+                "title": "地球三體組織 / part 1",
+                "content": "申玉菲在內心深處是一名堅定的拯救派。",
+            },
+            {
+                "id": "noise",
+                "source": "three-body.txt",
+                "chunk_index": 2,
+                "parent_title": "Narrative Text",
+                "title": "三體遊戲 / part 1",
+                "content": "申玉菲 三體遊戲 三體遊戲 三體遊戲。",
+            },
+        ]
+        graph = {
+            "entities": [
+                {"id": "person:shen-yufei", "name": "申玉菲", "type": "Person", "aliases": []},
+                {"id": "org:salvationists", "name": "拯救派", "type": "Organization", "aliases": []},
+            ],
+            "relations": [
+                {
+                    "source": "person:shen-yufei",
+                    "target": "org:salvationists",
+                    "type": "MEMBER_OF",
+                    "supporting_chunk_ids": ["support"],
+                    "confidence": 1.0,
+                }
+            ],
+        }
+
+        results = _rrf_parent_context_results(
+            question="申玉菲在地球三體組織中屬於哪一派？",
+            rewritten_query="申玉菲 三體遊戲",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=2,
+            final_context_k=5,
+            graph=graph,
+        )
+
+        self.assertEqual(results[0]["id"], "support")
+        self.assertIn("graph", results[0]["retrieval_method"])
 
     def test_hybrid_rerank_prioritizes_subject_and_choice_cooccurrence(self):
         chunks = [

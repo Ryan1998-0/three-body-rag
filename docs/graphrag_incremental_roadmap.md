@@ -104,6 +104,22 @@ LLM
 
 目標：建立正式 Entity Layer 與 Graph Retrieval branch，支援 hybrid query。
 
+目前落地狀態：
+
+```text
+已完成第一個本地 JSON graph 版本。
+尚未導入 Neo4j、LLM-assisted relation extraction 或 temporal graph。
+```
+
+目前已新增：
+
+- `rag_demo.graph_entities`
+- `rag_demo.query_classifier`
+- `rag_demo.graph_store`
+- `rag_demo.graph_retrieval`
+- `data/graph/three_body_graph.json`
+- Graph supporting chunks 與現有 RRF parent-context retrieval 的 merge
+
 新增元件：
 
 - Offline Entity Extraction

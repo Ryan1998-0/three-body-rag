@@ -13,6 +13,7 @@ from rag_demo.entity_resolution import answer_entity_existence
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
 from rag_demo.evidence_policy import build_evidence_policy
 from rag_demo.evidence_extraction_agent import extract_evidence
+from rag_demo.graph_retrieval import retrieve_graph_context
 from rag_demo.index_store import load_index
 from rag_demo.keyword_extraction import extract_keywords
 from rag_demo.model_providers import ask_model
@@ -457,6 +458,7 @@ def _rrf_parent_context_results(
     top_k: int,
     candidate_k: int,
     final_context_k: int = 8,
+    graph=None,
 ):
     query = _bm25_dense_retrieval_query(question, rewritten_query)
     metadata_query = _effective_rrf_retrieval_query(question, rewritten_query)
@@ -477,17 +479,69 @@ def _rrf_parent_context_results(
         ranked_lists.append(("dense", dense_results))
 
     merged = _rrf_merge_ranked_results(ranked_lists, top_k=candidate_k)
+    graph_results = retrieve_graph_context(
+        question,
+        chunks,
+        graph=graph,
+        project_root=PROJECT_ROOT,
+        max_results=max(5, min(8, int(final_context_k or 8))),
+    )
+    if graph_results:
+        merged = _merge_graph_and_vector_candidates(graph_results, merged, top_k=candidate_k)
     _rerank_rrf_candidates(merged, question=question, rewritten_query=query)
     reranked = sorted(merged, key=lambda item: item["score"], reverse=True)[:top_k]
     expanded = _expand_parent_chunks(reranked, chunks, max_contexts=max(5, min(8, int(final_context_k or 8))))
+    structured_results = find_result_constrained_chunks(question, chunks, max_results=max(5, min(8, int(final_context_k or 8))))
+    if structured_results:
+        expanded = merge_event_list_chunks(structured_results, expanded)[: max(5, min(8, int(final_context_k or 8)))]
 
     results = []
     for chunk in expanded:
         result = dict(chunk)
-        result["retrieval_method"] = "rrf_parent_context"
+        result["retrieval_method"] = _merge_retrieval_method(result.get("retrieval_method", ""), "rrf_parent_context")
         result.setdefault("rerank_trace", "")
         results.append(result)
     return results
+
+
+def _merge_graph_and_vector_candidates(graph_results, vector_results, top_k: int):
+    merged = {}
+    order = []
+    for chunk in list(graph_results) + list(vector_results):
+        chunk_id = chunk.get("id")
+        if chunk_id not in merged:
+            candidate = dict(chunk)
+            candidate["score"] = float(candidate.get("score", 0.0))
+            merged[chunk_id] = candidate
+            order.append(chunk_id)
+            continue
+        existing = merged[chunk_id]
+        existing["score"] = max(float(existing.get("score", 0.0)), float(chunk.get("score", 0.0)))
+        existing["retrieval_method"] = _merge_retrieval_method(
+            existing.get("retrieval_method", ""),
+            chunk.get("retrieval_method", ""),
+        )
+        if chunk.get("graph_trace"):
+            existing["graph_trace"] = chunk["graph_trace"]
+        if chunk.get("rerank_trace"):
+            existing["rerank_trace"] = _merge_trace(existing.get("rerank_trace", ""), chunk["rerank_trace"])
+
+    for index, chunk_id in enumerate(order):
+        method = str(merged[chunk_id].get("retrieval_method", ""))
+        if "graph" in method:
+            merged[chunk_id]["score"] += 3.0 - (0.05 * index)
+
+    return sorted(merged.values(), key=lambda item: item.get("score", 0.0), reverse=True)[:top_k]
+
+
+def _merge_retrieval_method(left: str, right: str) -> str:
+    methods = [method for method in (str(left), str(right)) if method]
+    return "+".join(dict.fromkeys(methods))
+
+
+def _merge_trace(left: str, right: str) -> str:
+    traces = [trace for trace in (str(left), str(right)) if trace]
+    return ", ".join(dict.fromkeys(traces))
 
 
 def _metadata_filter_chunk_embedding_pairs(query: str, chunks, embeddings):
@@ -558,6 +612,10 @@ def _is_low_information_rewrite(question: str, rewritten_query: str) -> bool:
 def _explicit_metadata_filters(query: str, chunks):
     compact_query = _compact_rerank_text(query)
     filters = {}
+    sequence_filters = _explicit_sequence_filters(query)
+    if sequence_filters:
+        filters["sequence"] = set(sequence_filters)
+
     metadata_fields = ("book", "volume", "document_type", "author", "department", "chapter")
     for field in metadata_fields:
         values = {
@@ -573,10 +631,40 @@ def _explicit_metadata_filters(query: str, chunks):
 
 def _chunk_matches_metadata_filters(chunk, metadata_filters) -> bool:
     for field, allowed_values in metadata_filters.items():
+        if field == "sequence":
+            if not _chunk_matches_sequence_filter(chunk, allowed_values):
+                return False
+            continue
         value = str(chunk.get(field, "")).strip()
         if value not in allowed_values:
             return False
     return True
+
+
+def _explicit_sequence_filters(query: str):
+    sequence_labels = []
+    patterns = (
+        (r"第\s*(\d+)\s*(輪|章|節|段|步|天|次|回合|階段)", lambda number, unit: f"第{number}{unit}"),
+        (r"\b(round|chapter|section|step|phase|day)\s*(\d+)\b", lambda unit, number: f"{unit.lower()} {number}"),
+        (r"\b(\d+)\s*(round|chapter|section|step|phase|day)\b", lambda number, unit: f"{unit.lower()} {number}"),
+    )
+    for pattern, formatter in patterns:
+        for match in re.finditer(pattern, str(query), flags=re.IGNORECASE):
+            sequence_labels.append(formatter(*match.groups()))
+    return list(dict.fromkeys(sequence_labels))
+
+
+def _chunk_matches_sequence_filter(chunk, allowed_values) -> bool:
+    metadata_text = "\n".join(
+        str(chunk.get(field, ""))
+        for field in ("parent_title", "title", "chapter", "section", "phase", "step")
+    )
+    compact_metadata = _compact_rerank_text(metadata_text)
+    for value in allowed_values:
+        compact_value = _compact_rerank_text(value)
+        if compact_value and compact_value in compact_metadata:
+            return True
+    return False
 
 
 def _rrf_merge_ranked_results(ranked_lists, top_k: int, rrf_k: int = 60):
@@ -652,6 +740,8 @@ def _expand_parent_chunks(ranked_chunks, all_chunks, max_contexts: int = 8, neig
 
     for chunk in ranked_chunks:
         for candidate in _parent_expansion_candidates(chunk, chunks_by_parent, neighbor_window):
+            if candidate.get("id") == chunk.get("id"):
+                candidate = chunk
             chunk_id = candidate.get("id")
             if chunk_id in selected_ids:
                 continue

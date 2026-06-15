@@ -547,6 +547,11 @@ python3 -m unittest discover -s tests
 
 ## 下一步建議
 
+完整的三體 RAG 優化歷程、評分機制變化與數據整理已記錄在：
+
+- `docs/rag_project_history_report.md`
+- `docs/graphrag_incremental_roadmap.md`
+
 先建立最小資料集，不要一開始做太大。
 
 建議第一個實作目標：
