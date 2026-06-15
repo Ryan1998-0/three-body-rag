@@ -1,0 +1,101 @@
+[
+  {
+    "id": "BQ1",
+    "question": "第2輪是誰提名隊伍？提名了哪兩個人？",
+    "criteria": [
+      {"label": "第2輪", "weight": 1, "aliases": ["第2輪"]},
+      {"label": "API AI 2 proposed", "weight": 1, "aliases": ["【API AI 2 / 派西維爾】", "API AI 2 / 派西維爾"]},
+      {"label": "team 2,4", "weight": 1, "aliases": ["提名隊伍 [2,4]", "這輪改開 2、4"]}
+    ]
+  },
+  {
+    "id": "BQ2",
+    "question": "第3輪為什麼隊長把2號和4號都放場下？",
+    "criteria": [
+      {"label": "第3輪", "weight": 1, "aliases": ["第3輪"]},
+      {"label": "2,4 had one fail", "weight": 1, "aliases": ["第一輪 2、4 出了一張失敗", "2、4任務失敗一張"]},
+      {"label": "do not return either", "weight": 1, "aliases": ["不讓任何一個回車", "把 2、4 一起丟下去"]},
+      {"label": "isolation comparison", "weight": 1, "aliases": ["隔離對照", "建立對照"]}
+    ]
+  },
+  {
+    "id": "BQ3",
+    "question": "第4輪4號為什麼提名1、4？",
+    "criteria": [
+      {"label": "第4輪", "weight": 1, "aliases": ["第4輪"]},
+      {"label": "API AI 4 proposed", "weight": 1, "aliases": ["【API AI 4 / 莫德雷德】", "API AI 4 / 莫德雷德"]},
+      {"label": "team 1,4", "weight": 1, "aliases": ["提名隊伍 [1,4]", "我開 1、4"]},
+      {"label": "public reason take responsibility", "weight": 1, "aliases": ["讓我這個第一輪焦點上來扛檢驗", "提自己上車可在通過後出失敗結束遊戲"]}
+    ]
+  },
+  {
+    "id": "BQ4",
+    "question": "第5輪5號提名的隊伍是誰？這個提名的理由或風險是什麼？",
+    "criteria": [
+      {"label": "第5輪", "weight": 1, "aliases": ["第5輪"]},
+      {"label": "API AI 5 proposed", "weight": 1, "aliases": ["【API AI 5 / 刺客】", "API AI 5 / 刺客"]},
+      {"label": "team 1,3", "weight": 1, "aliases": ["提名隊伍 [1,3]", "1、3 這組"]},
+      {"label": "test voting / avoid risk line", "weight": 1, "aliases": ["測投票態度", "避開 4、5", "把 4、5 這條剛才的贊成線先切開"]}
+    ]
+  },
+  {
+    "id": "BQ5",
+    "question": "第6輪誰唯一投了贊成？誰投反對？",
+    "criteria": [
+      {"label": "第6輪", "weight": 1, "aliases": ["第6輪"]},
+      {"label": "vote 1 approve 4 reject", "weight": 1, "aliases": ["投票：1 贊成，4 反對"]},
+      {"label": "approve player 4", "weight": 1, "aliases": ["贊成：API AI 4"]},
+      {"label": "reject players 1,2,3,5", "weight": 1, "aliases": ["反對：API AI 1、API AI 2、API AI 3、API AI 5"]}
+    ]
+  },
+  {
+    "id": "BQ6",
+    "question": "第7輪2號提名1、2、3的理由是什麼？",
+    "criteria": [
+      {"label": "第7輪", "weight": 1, "aliases": ["第7輪"]},
+      {"label": "API AI 2 proposed", "weight": 1, "aliases": ["【API AI 2 / 派西維爾】", "API AI 2 / 派西維爾"]},
+      {"label": "team 1,2,3", "weight": 1, "aliases": ["提名隊伍 [1,2,3]", "我開 1、2、3"]},
+      {"label": "success line and exclude 4,5", "weight": 1, "aliases": ["第三輪 1、3 已經在賽點交過結果", "4、5 這輪先拆乾淨"]}
+    ]
+  },
+  {
+    "id": "BQ7",
+    "question": "第8輪3號為什麼沿用1、2、3？",
+    "criteria": [
+      {"label": "第8輪", "weight": 1, "aliases": ["第8輪"]},
+      {"label": "API AI 3 proposed", "weight": 1, "aliases": ["【API AI 3 / 忠臣】", "API AI 3 / 忠臣"]},
+      {"label": "team 1,2,3", "weight": 1, "aliases": ["提名隊伍 [1,2,3]", "我開 1、2、3"]},
+      {"label": "previous zero fail and avoid 4,5", "weight": 1, "aliases": ["第四輪在賽點已經交出 0 失敗", "沒有必要再把 4、5 的爭議位拉回來"]}
+    ]
+  },
+  {
+    "id": "BQ8",
+    "question": "哪幾輪連續使用1、2、3作為三人隊？",
+    "criteria": [
+      {"label": "第7輪", "weight": 1, "aliases": ["第7輪"]},
+      {"label": "第7輪 team 1,2,3", "weight": 1, "aliases": ["提名隊伍 [1,2,3]", "出任務者：API AI 1、API AI 2、API AI 3"]},
+      {"label": "第8輪", "weight": 1, "aliases": ["第8輪"]},
+      {"label": "第8輪 team 1,2,3", "weight": 1, "aliases": ["提名隊伍 [1,2,3]", "出任務者：API AI 1、API AI 2、API AI 3"]}
+    ]
+  },
+  {
+    "id": "BQ9",
+    "question": "只看投票結果，第1輪和第6輪有什麼相同點？",
+    "criteria": [
+      {"label": "第1輪", "weight": 1, "aliases": ["第1輪"]},
+      {"label": "第1輪 rejected", "weight": 1, "aliases": ["投票：2 贊成，3 反對", "隊伍結果：未通過"]},
+      {"label": "第6輪", "weight": 1, "aliases": ["第6輪"]},
+      {"label": "第6輪 rejected", "weight": 1, "aliases": ["投票：1 贊成，4 反對", "隊伍結果：未通過"]}
+    ]
+  },
+  {
+    "id": "BQ10",
+    "question": "最後正義方完成第三勝的任務隊伍是誰？任務牌結果如何？",
+    "criteria": [
+      {"label": "第8輪", "weight": 1, "aliases": ["第8輪"]},
+      {"label": "mission team 1,2,3", "weight": 1, "aliases": ["出任務者：API AI 1、API AI 2、API AI 3"]},
+      {"label": "mission success", "weight": 1, "aliases": ["任務：成功，正義方得分"]},
+      {"label": "zero fail cards", "weight": 1, "aliases": ["任務牌：3 張，失敗牌 0 張", "失敗牌：無"]}
+    ]
+  }
+]
