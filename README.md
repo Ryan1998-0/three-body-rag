@@ -367,6 +367,46 @@ http://127.0.0.1:8766
 網站會讀取目前的 JSON index，送出問題後呼叫本機 Ollama `qwen2.5:7b` 回答。
 如果已建立 `data/index/embeddings.npy`，網站查詢會使用 hybrid search。
 
+### 目前 Retrieval Workflow
+
+目前驗證中的 retrieval pipeline 採用以下流程：
+
+```text
+Question
+↓
+Query Rewrite
+↓
+Metadata Filter
+↓
+BM25(original question) + Dense(original question)
+↓
+RRF Merge
+↓
+Reranker
+↓
+Parent Chunk Expansion
+↓
+Top 8 Context
+↓
+LLM
+```
+
+關鍵決策：
+
+- BM25 使用原始問題，不直接使用 query rewrite 結果。
+- Dense retrieval 的 query embedding 也使用原始問題。
+- Query Rewrite 保留在流程中，但主要作為 metadata filtering / reranking 的輔助訊號。
+- RRF Merge 用排名融合 BM25 與 Dense 結果，避免兩種 retriever 的 raw score 尺度不一致。
+- Parent Chunk Expansion 會在 rerank 後補同章節相鄰 chunks，避免答案落在命中 chunk 的前後文。
+- 最終 context 目前固定觀察 Top 8，作為提供給 LLM / QA Agent 的 evidence 範圍。
+
+在第一集封閉 20 題 retrieval upper-bound 測試中，這條流程的 Top 8 Context 已能覆蓋標準答案所需資訊：
+
+```text
+evals/three_body_qwen/first20_retrieval_upper_bound_report_20260615-162647.md
+Result: 100 / 100
+```
+
 目前 query 流程：
 
 ```text

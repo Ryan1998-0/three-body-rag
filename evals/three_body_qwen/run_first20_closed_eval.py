@@ -13,7 +13,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from rag_demo.config import RagConfig
-from rag_demo.query import answer_question
+from rag_demo.query import (
+    answer_question,
+    answer_question_sparse_dense_original_refined_keywords,
+    answer_question_sparse_dense_refined_keywords,
+)
 
 
 DETAIL_INSTRUCTION = (
@@ -37,6 +41,8 @@ def main() -> int:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     model = os.getenv("RAG_EVAL_MODEL", "qwen2.5:7b")
     top_k = int(os.getenv("RAG_EVAL_TOP_K", str(RagConfig.from_env().top_k)))
+    workflow = os.getenv("RAG_WORKFLOW", "default")
+    answer_fn = answer_function_for_workflow(workflow)
     raw_path = eval_dir / f"first20_closed_raw_answers_{timestamp}.jsonl"
     report_path = eval_dir / f"first20_closed_scored_report_{timestamp}.md"
 
@@ -63,7 +69,7 @@ def main() -> int:
                 "elapsed_seconds": None,
             }
             try:
-                record["answer_output"] = answer_question(asked_question, model=model, top_k=top_k)
+                record["answer_output"] = answer_fn(asked_question, model=model, top_k=top_k)
                 record["final_answer"] = extract_final_answer(record["answer_output"])
                 record.update(score_answer(record["final_answer"], item))
             except Exception as exc:
@@ -79,7 +85,7 @@ def main() -> int:
                 flush=True,
             )
 
-    write_report(report_path, raw_path, question_path, records, model, top_k, started)
+    write_report(report_path, raw_path, question_path, records, model, top_k, started, workflow=workflow)
     print(f"Raw JSONL: {raw_path}", flush=True)
     print(f"Scored report: {report_path}", flush=True)
     return 0 if all(record["error"] is None for record in records) else 1
@@ -87,6 +93,17 @@ def main() -> int:
 
 def build_eval_question(question: str) -> str:
     return f"{question}\n{DETAIL_INSTRUCTION}"
+
+
+def answer_function_for_workflow(workflow: str):
+    normalized = str(workflow or "default").strip().lower()
+    if normalized in {"default", "three_agent"}:
+        return answer_question
+    if normalized == "sparse_dense_refined_keywords":
+        return answer_question_sparse_dense_refined_keywords
+    if normalized == "sparse_dense_original_refined_keywords":
+        return answer_question_sparse_dense_original_refined_keywords
+    raise ValueError(f"Unknown RAG_WORKFLOW: {workflow}")
 
 
 def extract_final_answer(answer_output: str) -> str:
@@ -149,7 +166,7 @@ def _contains_unnegated_alias(answer: str, alias: str) -> bool:
         start = index + len(alias)
 
 
-def write_report(report_path, raw_path, question_path, records, model, top_k, started) -> None:
+def write_report(report_path, raw_path, question_path, records, model, top_k, started, workflow: str = "default") -> None:
     total_score = sum(record["score"] for record in records)
     total_max = sum(record["max_score"] for record in records)
     percent = round(total_score / total_max * 100, 1) if total_max else 0.0
@@ -162,6 +179,7 @@ def write_report(report_path, raw_path, question_path, records, model, top_k, st
         "",
         f"- Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"- Model: `{model}`",
+        f"- Workflow: `{workflow}`",
         f"- Top K: `{top_k}`",
         f"- Chunk size / stride: `{config.chunk_size}/{config.chunk_stride}`",
         f"- Questions: `{question_path.relative_to(ROOT)}`",

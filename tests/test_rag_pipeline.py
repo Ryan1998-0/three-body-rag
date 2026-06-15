@@ -27,7 +27,7 @@ from rag_demo.qa_agent import build_qa_prompt
 from rag_demo.question_extraction import parse_question_output
 from rag_demo.context_summary import build_context_summary_prompt, build_deterministic_context_summary, extract_deterministic_evidence, summarize_retrieved_context
 from rag_demo.general_answer import build_general_answer_prompt
-from rag_demo.query import _answer_from_deterministic_narrative_evidence, _build_source_insufficient_answer, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _diversify_retrieval_results, _format_output, _format_three_agent_output, _hybrid_rerank_results, _select_retrieval_query, answer_question
+from rag_demo.query import _answer_from_deterministic_narrative_evidence, _bm25_dense_retrieval_query, _build_source_insufficient_answer, _build_sparse_dense_original_refined_query_variants, _build_sparse_dense_refined_query_variants, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _diversify_retrieval_results, _expand_parent_chunks, _format_output, _format_three_agent_output, _hybrid_rerank_results, _rrf_merge_ranked_results, _rrf_parent_context_results, _select_retrieval_query, answer_question
 from rag_demo.query_rewriter import build_rewrite_prompt, extract_retrieval_query, sanitize_retrieval_query
 from rag_demo.retrieval_planner import build_retrieval_plan, extract_focus_terms
 from rag_demo.retrieval_verifier import build_verifier_prompt, extract_evidence_candidates, parse_verifier_output
@@ -1202,6 +1202,46 @@ Owner: Team B
         self.assertNotIn("她為什麼回覆？", variants[3]["query"])
         self.assertNotIn("葉文潔為什麼回覆三體文明？", variants[3]["query"])
 
+    def test_sparse_dense_refined_query_variants_use_refined_question_and_keywords(self):
+        variants = _build_sparse_dense_refined_query_variants(
+            "她是誰？",
+            "申玉菲在地球三體組織中較接近哪個派別？",
+            ["申玉菲", "地球三體組織", "派別"],
+        )
+
+        self.assertEqual(
+            [variant["name"] for variant in variants],
+            ["sparse_refined", "sparse_keywords", "dense_refined", "dense_keywords"],
+        )
+        self.assertTrue(all("她是誰？" not in variant["query"] for variant in variants))
+        self.assertEqual(variants[0]["query"], "申玉菲在地球三體組織中較接近哪個派別？")
+        self.assertEqual(variants[1]["query"], "申玉菲 地球三體組織 派別")
+        self.assertEqual(variants[2]["retrieval"], "dense")
+
+    def test_sparse_dense_original_refined_query_variants_include_both_keyword_sets(self):
+        variants = _build_sparse_dense_original_refined_query_variants(
+            original_question="她後來去那個地方？",
+            refined_question="葉文潔後來被調到哪個軍事基地？",
+            original_keywords=["她", "紅岸基地"],
+            refined_keywords=["葉文潔", "軍事基地"],
+        )
+
+        self.assertEqual(
+            [variant["name"] for variant in variants],
+            [
+                "sparse_refined",
+                "sparse_original_keywords",
+                "sparse_refined_keywords",
+                "sparse_all_keywords",
+                "dense_refined",
+                "dense_all_keywords",
+            ],
+        )
+        self.assertIn("紅岸基地", variants[1]["query"])
+        self.assertIn("葉文潔", variants[2]["query"])
+        self.assertEqual(variants[3]["query"], "她 紅岸基地 葉文潔 軍事基地")
+        self.assertEqual(variants[-1]["retrieval"], "dense")
+
     def test_hybrid_rerank_uses_multiple_query_variants_before_top_k(self):
         chunks = [
             {
@@ -1246,6 +1286,121 @@ Owner: Team B
         self.assertEqual(len(results), 2)
         self.assertTrue(all(result["retrieval_method"] == "hybrid_rerank" for result in results))
         self.assertTrue(any("kw:question_agent" in result["rerank_trace"] for result in results))
+
+    def test_rrf_merge_combines_bm25_and_dense_rankings(self):
+        bm25_results = [
+            {"id": "lexical", "source": "three-body.txt", "title": "紅岸", "content": "紅岸基地"},
+            {"id": "shared", "source": "three-body.txt", "title": "葉文潔", "content": "葉文潔"},
+        ]
+        dense_results = [
+            {"id": "semantic", "source": "three-body.txt", "title": "軍事基地", "content": "基地工作"},
+            {"id": "shared", "source": "three-body.txt", "title": "葉文潔", "content": "葉文潔"},
+        ]
+
+        results = _rrf_merge_ranked_results([("bm25", bm25_results), ("dense", dense_results)], top_k=3)
+
+        self.assertEqual([result["id"] for result in results], ["shared", "lexical", "semantic"])
+        self.assertIn("bm25:2", results[0]["rerank_trace"])
+        self.assertIn("dense:2", results[0]["rerank_trace"])
+
+    def test_parent_chunk_expansion_adds_adjacent_same_section_chunks(self):
+        chunks = [
+            {"id": "c1", "source": "three-body.txt", "chunk_index": 1, "parent_title": "Narrative Text", "title": "紅岸 / part 1", "content": "前文"},
+            {"id": "c2", "source": "three-body.txt", "chunk_index": 2, "parent_title": "Narrative Text", "title": "紅岸 / part 2", "content": "命中內容"},
+            {"id": "c3", "source": "three-body.txt", "chunk_index": 3, "parent_title": "Narrative Text", "title": "紅岸 / part 3", "content": "後文"},
+            {"id": "c4", "source": "three-body.txt", "chunk_index": 4, "parent_title": "Narrative Text", "title": "三體 / part 1", "content": "別章"},
+        ]
+
+        expanded = _expand_parent_chunks([chunks[1]], chunks, max_contexts=3)
+
+        self.assertEqual([chunk["id"] for chunk in expanded], ["c2", "c1", "c3"])
+
+    def test_rrf_parent_context_results_limits_final_context_after_expansion(self):
+        chunks = [
+            {"id": "c1", "source": "three-body.txt", "chunk_index": 1, "parent_title": "Narrative Text", "title": "紅岸 / part 1", "content": "葉文潔"},
+            {"id": "c2", "source": "three-body.txt", "chunk_index": 2, "parent_title": "Narrative Text", "title": "紅岸 / part 2", "content": "紅岸基地"},
+            {"id": "c3", "source": "three-body.txt", "chunk_index": 3, "parent_title": "Narrative Text", "title": "紅岸 / part 3", "content": "軍事基地"},
+            {"id": "c4", "source": "three-body.txt", "chunk_index": 4, "parent_title": "Narrative Text", "title": "紅岸 / part 4", "content": "工作"},
+            {"id": "c5", "source": "three-body.txt", "chunk_index": 5, "parent_title": "Narrative Text", "title": "紅岸 / part 5", "content": "訊號"},
+            {"id": "c6", "source": "three-body.txt", "chunk_index": 6, "parent_title": "Narrative Text", "title": "紅岸 / part 6", "content": "太陽"},
+        ]
+
+        results = _rrf_parent_context_results(
+            question="葉文潔被調到哪個軍事基地？",
+            rewritten_query="葉文潔 紅岸基地 軍事基地",
+            chunks=chunks,
+            embeddings=None,
+            top_k=3,
+            candidate_k=6,
+            final_context_k=5,
+        )
+
+        self.assertLessEqual(len(results), 5)
+        self.assertGreaterEqual(len(results), 3)
+        self.assertTrue(any(result["id"] == "c2" for result in results))
+        self.assertTrue(all(result["retrieval_method"] == "rrf_parent_context" for result in results))
+
+    def test_rrf_parent_context_keeps_original_question_terms_when_rewrite_drops_them(self):
+        chunks = [
+            {"id": "noise", "source": "three-body.txt", "chunk_index": 1, "parent_title": "Narrative Text", "title": "葉文潔 / part 1", "content": "葉文潔 葉文潔 葉文潔與三體遊戲。"},
+            {"id": "book", "source": "three-body.txt", "chunk_index": 2, "parent_title": "Narrative Text", "title": "寂靜的春天 / part 1", "content": "寂靜的春天讓她開始思考人類之惡。"},
+        ]
+
+        results = _rrf_parent_context_results(
+            question="讓葉文潔開始理性思考人類之惡的是哪一本書？",
+            rewritten_query="葉文潔",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=2,
+            final_context_k=5,
+        )
+
+        self.assertEqual(results[0]["id"], "book")
+
+    def test_rrf_parent_context_ignores_low_information_rewrite_terms(self):
+        chunks = [
+            {"id": "noise", "source": "three-body.txt", "chunk_index": 1, "parent_title": "Narrative Text", "title": "三體問題 / part 1", "content": "汪淼 三體 三體 三體 研究。"},
+            {"id": "countdown", "source": "three-body.txt", "chunk_index": 2, "parent_title": "Narrative Text", "title": "射手和農場主 / part 1", "content": "汪淼眼前的倒計時停止了，他停止納米材料研究。"},
+        ]
+
+        results = _rrf_parent_context_results(
+            question="汪淼被倒數計時威脅時，被要求停止的是哪一類研究？",
+            rewritten_query="汪淼 三體",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=2,
+            final_context_k=5,
+        )
+
+        self.assertEqual(results[0]["id"], "countdown")
+
+    def test_rrf_parent_context_uses_original_question_for_bm25_retrieval(self):
+        chunks = [
+            {"id": "rewrite-noise", "source": "three-body.txt", "chunk_index": 1, "parent_title": "Narrative Text", "title": "三體 / part 1", "content": "三體 三體 三體 三體 三體。"},
+            {"id": "original-hit", "source": "three-body.txt", "chunk_index": 2, "parent_title": "Narrative Text", "title": "紅岸 / part 1", "content": "葉文潔後來被調到紅岸基地工作。"},
+        ]
+
+        results = _rrf_parent_context_results(
+            question="葉文潔後來被調到哪一個軍事基地工作？",
+            rewritten_query="三體 遊戲 文明",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=2,
+            final_context_k=5,
+        )
+
+        self.assertEqual(results[0]["id"], "original-hit")
+
+    def test_bm25_dense_retrieval_query_is_original_question(self):
+        query = _bm25_dense_retrieval_query(
+            question="葉文潔後來被調到哪一個軍事基地工作？",
+            rewritten_query="三體 遊戲 文明",
+        )
+
+        self.assertEqual(query, "葉文潔後來被調到哪一個軍事基地工作？")
 
     def test_hybrid_rerank_prioritizes_subject_and_choice_cooccurrence(self):
         chunks = [

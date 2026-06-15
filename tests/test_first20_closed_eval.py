@@ -1,9 +1,20 @@
 import unittest
 
-from evals.three_body_qwen.run_first20_closed_eval import extract_final_answer, score_answer
+from evals.three_body_qwen.run_first20_closed_eval import answer_function_for_workflow, extract_final_answer, score_answer
+from rag_demo.query import answer_question_sparse_dense_original_refined_keywords, answer_question_sparse_dense_refined_keywords
 
 
 class First20ClosedEvalTest(unittest.TestCase):
+    def test_answer_function_for_workflow_selects_sparse_dense_refined_keywords(self):
+        answer_fn = answer_function_for_workflow("sparse_dense_refined_keywords")
+
+        self.assertIs(answer_fn, answer_question_sparse_dense_refined_keywords)
+
+    def test_answer_function_for_workflow_selects_sparse_dense_original_refined_keywords(self):
+        answer_fn = answer_function_for_workflow("sparse_dense_original_refined_keywords")
+
+        self.assertIs(answer_fn, answer_question_sparse_dense_original_refined_keywords)
+
     def test_extract_final_answer_returns_final_answer_section(self):
         output = """問題：測試
 

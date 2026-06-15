@@ -115,6 +115,191 @@ def answer_question(question: str, model: str, top_k: int = 5) -> str:
     )
 
 
+def answer_question_sparse_dense_refined_keywords(question: str, model: str, top_k: int = 5) -> str:
+    total_started_at = perf_counter()
+    timing = {}
+    config = RagConfig.from_env()
+    top_k = top_k or config.top_k
+    kb_dir = resolve_project_path("RAG_KB_DIR", "data/raw", project_root=PROJECT_ROOT)
+    index_dir = resolve_project_path("RAG_INDEX_DIR", "data/index", project_root=PROJECT_ROOT)
+    index_path = index_dir / "chunks.json"
+    started_at = perf_counter()
+    if index_path.exists():
+        chunks = load_index(index_path)
+    else:
+        chunks = load_knowledge_base_chunks(kb_dir)
+    timing["load_index"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    refined_question = extract_real_question(
+        question,
+        model=model,
+    )
+    timing["question_extraction_agent"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    keywords = extract_keywords(
+        refined_question,
+        model=model,
+    )
+    timing["keyword_extraction_agent"] = perf_counter() - started_at
+
+    query_variants = _build_sparse_dense_refined_query_variants(question, refined_question, keywords)
+    embedding_path = index_dir / "embeddings.npy"
+    embeddings = None
+    if embedding_path.exists():
+        started_at = perf_counter()
+        try:
+            embeddings = load_embedding_matrix(embedding_path)
+            timing["load_embeddings"] = perf_counter() - started_at
+        except Exception:
+            timing["load_embeddings"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    results = _sparse_dense_refined_results(
+        query_variants=query_variants,
+        question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=chunks,
+        embeddings=embeddings,
+        top_k=top_k,
+        candidate_k=config.retrieval_candidate_k,
+    )
+    timing["sparse_dense_retrieval"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    extracted_evidence = extract_evidence(
+        original_question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=results,
+        model=model,
+    )
+    timing["evidence_extraction_agent"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    answer = answer_with_qa_agent(
+        original_question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=results,
+        extracted_evidence=extracted_evidence,
+        model=model,
+    )
+    timing["qa_agent"] = perf_counter() - started_at
+    timing["total"] = perf_counter() - total_started_at
+    return _format_three_agent_output(
+        question,
+        query_variants,
+        keywords,
+        refined_question,
+        results,
+        extracted_evidence,
+        answer,
+        timing=timing,
+    )
+
+
+def answer_question_sparse_dense_original_refined_keywords(question: str, model: str, top_k: int = 5) -> str:
+    total_started_at = perf_counter()
+    timing = {}
+    config = RagConfig.from_env()
+    top_k = top_k or config.top_k
+    kb_dir = resolve_project_path("RAG_KB_DIR", "data/raw", project_root=PROJECT_ROOT)
+    index_dir = resolve_project_path("RAG_INDEX_DIR", "data/index", project_root=PROJECT_ROOT)
+    index_path = index_dir / "chunks.json"
+    started_at = perf_counter()
+    if index_path.exists():
+        chunks = load_index(index_path)
+    else:
+        chunks = load_knowledge_base_chunks(kb_dir)
+    timing["load_index"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    refined_question = extract_real_question(
+        question,
+        model=model,
+    )
+    timing["question_extraction_agent"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    original_keywords = extract_keywords(
+        question,
+        model=model,
+    )
+    timing["original_keyword_extraction_agent"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    refined_keywords = extract_keywords(
+        refined_question,
+        model=model,
+    )
+    timing["refined_keyword_extraction_agent"] = perf_counter() - started_at
+    keywords = _merge_keywords(original_keywords, refined_keywords)
+
+    query_variants = _build_sparse_dense_original_refined_query_variants(
+        original_question=question,
+        refined_question=refined_question,
+        original_keywords=original_keywords,
+        refined_keywords=refined_keywords,
+    )
+    embedding_path = index_dir / "embeddings.npy"
+    embeddings = None
+    if embedding_path.exists():
+        started_at = perf_counter()
+        try:
+            embeddings = load_embedding_matrix(embedding_path)
+            timing["load_embeddings"] = perf_counter() - started_at
+        except Exception:
+            timing["load_embeddings"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    results = _sparse_dense_refined_results(
+        query_variants=query_variants,
+        question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=chunks,
+        embeddings=embeddings,
+        top_k=top_k,
+        candidate_k=config.retrieval_candidate_k,
+    )
+    timing["sparse_dense_retrieval"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    extracted_evidence = extract_evidence(
+        original_question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=results,
+        model=model,
+    )
+    timing["evidence_extraction_agent"] = perf_counter() - started_at
+
+    started_at = perf_counter()
+    answer = answer_with_qa_agent(
+        original_question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=results,
+        extracted_evidence=extracted_evidence,
+        model=model,
+    )
+    timing["qa_agent"] = perf_counter() - started_at
+    timing["total"] = perf_counter() - total_started_at
+    return _format_three_agent_output(
+        question,
+        query_variants,
+        keywords,
+        refined_question,
+        results,
+        extracted_evidence,
+        answer,
+        timing=timing,
+    )
+
+
 def _build_three_agent_query_variants(question: str, refined_question: str, keywords):
     keyword_query = " ".join(str(keyword).strip() for keyword in keywords if str(keyword).strip())
     original_query = " ".join(str(question).split())
@@ -136,6 +321,385 @@ def _build_three_agent_query_variants(question: str, refined_question: str, keyw
         seen.add(key)
         unique.append({**variant, "query": query})
     return unique
+
+
+def _merge_keywords(*keyword_groups):
+    merged = []
+    seen = set()
+    for keywords in keyword_groups:
+        for keyword in keywords:
+            cleaned = str(keyword).strip()
+            key = _compact_rerank_text(cleaned)
+            if cleaned and key not in seen:
+                seen.add(key)
+                merged.append(cleaned)
+    return merged
+
+
+def _build_sparse_dense_refined_query_variants(question: str, refined_question: str, keywords):
+    keyword_query = " ".join(str(keyword).strip() for keyword in keywords if str(keyword).strip())
+    refined_query = " ".join(str(refined_question).split())
+    variants = [
+        {"name": "sparse_refined", "query": refined_query, "retrieval": "sparse", "weight": 1.00},
+        {"name": "sparse_keywords", "query": keyword_query, "retrieval": "sparse", "weight": 1.10},
+        {"name": "dense_refined", "query": refined_query, "retrieval": "dense", "weight": 1.00},
+        {"name": "dense_keywords", "query": keyword_query, "retrieval": "dense", "weight": 0.90},
+    ]
+
+    unique = []
+    seen = set()
+    for variant in variants:
+        query = str(variant["query"]).strip()
+        key = (variant["name"], query, variant["retrieval"])
+        if not query or key in seen:
+            continue
+        seen.add(key)
+        unique.append({**variant, "query": query})
+    return unique
+
+
+def _build_sparse_dense_original_refined_query_variants(
+    original_question: str,
+    refined_question: str,
+    original_keywords,
+    refined_keywords,
+):
+    original_keyword_query = " ".join(str(keyword).strip() for keyword in original_keywords if str(keyword).strip())
+    refined_keyword_query = " ".join(str(keyword).strip() for keyword in refined_keywords if str(keyword).strip())
+    all_keyword_query = " ".join(_merge_keywords(original_keywords, refined_keywords))
+    refined_query = " ".join(str(refined_question).split())
+    variants = [
+        {"name": "sparse_refined", "query": refined_query, "retrieval": "sparse", "weight": 1.00},
+        {"name": "sparse_original_keywords", "query": original_keyword_query, "retrieval": "sparse", "weight": 1.00},
+        {"name": "sparse_refined_keywords", "query": refined_keyword_query, "retrieval": "sparse", "weight": 1.05},
+        {"name": "sparse_all_keywords", "query": all_keyword_query, "retrieval": "sparse", "weight": 1.15},
+        {"name": "dense_refined", "query": refined_query, "retrieval": "dense", "weight": 1.00},
+        {"name": "dense_all_keywords", "query": all_keyword_query, "retrieval": "dense", "weight": 0.90},
+    ]
+
+    unique = []
+    seen = set()
+    for variant in variants:
+        query = str(variant["query"]).strip()
+        key = (variant["name"], query, variant["retrieval"])
+        if not query or key in seen:
+            continue
+        seen.add(key)
+        unique.append({**variant, "query": query})
+    return unique
+
+
+def _sparse_dense_refined_results(
+    query_variants,
+    question: str,
+    refined_question: str,
+    keywords,
+    chunks,
+    embeddings,
+    top_k: int,
+    candidate_k: int,
+):
+    candidates = {}
+    candidate_k = max(top_k, int(candidate_k or top_k))
+
+    for variant in query_variants:
+        query_text = variant["query"]
+        query_weight = float(variant.get("weight", 1.0))
+        retrieval = str(variant.get("retrieval", "sparse"))
+
+        if retrieval == "sparse":
+            keyword_results = keyword_search(query_text, chunks, top_k=candidate_k)
+            max_keyword_score = max((float(item.get("score", 0.0)) for item in keyword_results), default=1.0)
+            for rank, chunk in enumerate(keyword_results, start=1):
+                normalized_score = float(chunk.get("score", 0.0)) / max_keyword_score if max_keyword_score else 0.0
+                _add_hybrid_candidate_score(
+                    candidates,
+                    chunk,
+                    score=query_weight * (0.62 * normalized_score + _reciprocal_rank_score(rank, 0.12)),
+                    method=f"sparse:{variant['name']}:{rank}",
+                    keyword_score=float(chunk.get("score", 0.0)),
+                )
+            continue
+
+        if retrieval == "dense" and embeddings is not None:
+            embedding_results = embedding_search(
+                query_text,
+                chunks,
+                embeddings=embeddings,
+                embed_query_fn=embed_query,
+                top_k=candidate_k,
+            )
+            embedding_scores = [float(item.get("embedding_score", 0.0)) for item in embedding_results]
+            min_embedding = min(embedding_scores, default=0.0)
+            max_embedding = max(embedding_scores, default=1.0)
+            span = max(max_embedding - min_embedding, 1e-9)
+            for rank, chunk in enumerate(embedding_results, start=1):
+                raw_embedding = float(chunk.get("embedding_score", 0.0))
+                normalized_score = (raw_embedding - min_embedding) / span
+                _add_hybrid_candidate_score(
+                    candidates,
+                    chunk,
+                    score=query_weight * (0.38 * normalized_score + _reciprocal_rank_score(rank, 0.08)),
+                    method=f"dense:{variant['name']}:{rank}",
+                    embedding_score=raw_embedding,
+                )
+
+    _apply_rerank_lexical_coverage_boost(candidates, question, refined_question, keywords)
+    ranked = sorted(candidates.values(), key=lambda item: item["score"], reverse=True)
+    return [_strip_rerank_candidate_metadata(item) for item in ranked[:top_k]]
+
+
+def _rrf_parent_context_results(
+    question: str,
+    rewritten_query: str,
+    chunks,
+    embeddings,
+    top_k: int,
+    candidate_k: int,
+    final_context_k: int = 8,
+):
+    query = _bm25_dense_retrieval_query(question, rewritten_query)
+    metadata_query = _effective_rrf_retrieval_query(question, rewritten_query)
+    filtered_chunks, filtered_embeddings = _metadata_filter_chunk_embedding_pairs(metadata_query, chunks, embeddings)
+    candidate_k = max(top_k, int(candidate_k or top_k))
+
+    bm25_results = keyword_search(query, filtered_chunks, top_k=candidate_k)
+    ranked_lists = [("bm25", bm25_results)]
+
+    if filtered_embeddings is not None:
+        dense_results = embedding_search(
+            query,
+            filtered_chunks,
+            embeddings=filtered_embeddings,
+            embed_query_fn=embed_query,
+            top_k=candidate_k,
+        )
+        ranked_lists.append(("dense", dense_results))
+
+    merged = _rrf_merge_ranked_results(ranked_lists, top_k=candidate_k)
+    _rerank_rrf_candidates(merged, question=question, rewritten_query=query)
+    reranked = sorted(merged, key=lambda item: item["score"], reverse=True)[:top_k]
+    expanded = _expand_parent_chunks(reranked, chunks, max_contexts=max(5, min(8, int(final_context_k or 8))))
+
+    results = []
+    for chunk in expanded:
+        result = dict(chunk)
+        result["retrieval_method"] = "rrf_parent_context"
+        result.setdefault("rerank_trace", "")
+        results.append(result)
+    return results
+
+
+def _metadata_filter_chunk_embedding_pairs(query: str, chunks, embeddings):
+    filtered_chunks = list(chunks)
+    filtered_embeddings = list(embeddings) if embeddings is not None else None
+    metadata_filters = _explicit_metadata_filters(query, filtered_chunks)
+    if not metadata_filters:
+        return filtered_chunks, filtered_embeddings
+
+    selected_chunks = []
+    selected_embeddings = [] if filtered_embeddings is not None else None
+    for index, chunk in enumerate(filtered_chunks):
+        if _chunk_matches_metadata_filters(chunk, metadata_filters):
+            selected_chunks.append(chunk)
+            if selected_embeddings is not None:
+                selected_embeddings.append(filtered_embeddings[index])
+
+    if not selected_chunks:
+        return filtered_chunks, filtered_embeddings
+    return selected_chunks, selected_embeddings
+
+
+def _bm25_dense_retrieval_query(question: str, rewritten_query: str) -> str:
+    return " ".join(str(question).split())
+
+
+def _effective_rrf_retrieval_query(question: str, rewritten_query: str) -> str:
+    if _is_low_information_rewrite(question, rewritten_query):
+        return " ".join(str(question).split())
+    return _combine_original_and_rewritten_query(question, rewritten_query)
+
+
+def _is_low_information_rewrite(question: str, rewritten_query: str) -> bool:
+    cleaned = " ".join(str(rewritten_query or "").split())
+    if not cleaned:
+        return True
+    compact_question = _compact_rerank_text(question)
+    compact_rewrite = _compact_rerank_text(cleaned)
+    if compact_rewrite == compact_question:
+        return False
+
+    generic_terms = {
+        "三體",
+        "三体",
+        "汪淼",
+        "葉文潔",
+        "叶文洁",
+        "文明",
+        "世界",
+        "問題",
+        "问题",
+        "遊戲",
+        "游戏",
+    }
+    terms = [term.strip() for term in cleaned.split() if term.strip()]
+    if not terms:
+        terms = [cleaned]
+    if len(terms) <= 2:
+        low_information_terms = 0
+        for term in terms:
+            compact_term = _compact_rerank_text(term)
+            if compact_term in generic_terms or compact_term in compact_question:
+                low_information_terms += 1
+        return low_information_terms == len(terms)
+    return False
+
+
+def _explicit_metadata_filters(query: str, chunks):
+    compact_query = _compact_rerank_text(query)
+    filters = {}
+    metadata_fields = ("book", "volume", "document_type", "author", "department", "chapter")
+    for field in metadata_fields:
+        values = {
+            str(chunk.get(field, "")).strip()
+            for chunk in chunks
+            if str(chunk.get(field, "")).strip()
+        }
+        matched = [value for value in values if _compact_rerank_text(value) in compact_query]
+        if matched:
+            filters[field] = set(matched)
+    return filters
+
+
+def _chunk_matches_metadata_filters(chunk, metadata_filters) -> bool:
+    for field, allowed_values in metadata_filters.items():
+        value = str(chunk.get(field, "")).strip()
+        if value not in allowed_values:
+            return False
+    return True
+
+
+def _rrf_merge_ranked_results(ranked_lists, top_k: int, rrf_k: int = 60):
+    candidates = {}
+    for source_name, results in ranked_lists:
+        for rank, chunk in enumerate(results, start=1):
+            chunk_id = chunk["id"]
+            if chunk_id not in candidates:
+                candidate = dict(chunk)
+                candidate["score"] = 0.0
+                candidate["rrf_score"] = 0.0
+                candidate["retrieval_methods"] = []
+                candidates[chunk_id] = candidate
+            score = 1.0 / (rrf_k + rank)
+            candidates[chunk_id]["score"] += score
+            candidates[chunk_id]["rrf_score"] += score
+            candidates[chunk_id]["retrieval_methods"].append(f"{source_name}:{rank}")
+
+    ranked = sorted(candidates.values(), key=lambda item: item["score"], reverse=True)
+    results = []
+    for item in ranked[:top_k]:
+        result = dict(item)
+        methods = result.get("retrieval_methods", [])
+        result["rerank_trace"] = ", ".join(methods)
+        result["retrieval_method"] = "rrf"
+        results.append(result)
+    return results
+
+
+def _rerank_rrf_candidates(candidates, question: str, rewritten_query: str) -> None:
+    terms = _relevant_rerank_terms(" ".join([question, rewritten_query]))
+    terms.extend(_cjk_query_phrase_terms(question))
+    terms = list(dict.fromkeys(terms))[:48]
+    if not terms:
+        return
+    for candidate in candidates:
+        text = _compact_rerank_text(
+            f"{candidate.get('parent_title', '')} {candidate.get('title', '')} {candidate.get('content', '')}"
+        )
+        covered = sum(1 for term in terms if _compact_rerank_text(term) in text)
+        candidate["score"] += 0.20 * (covered / len(terms))
+
+
+def _cjk_query_phrase_terms(text: str):
+    compact = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]+", "", str(text))
+    stop_fragments = {
+        "的是",
+        "什麼",
+        "哪一",
+        "哪個",
+        "哪本",
+        "一本",
+        "問題",
+        "主要",
+        "開始",
+        "後來",
+        "要求",
+    }
+    terms = []
+    for length in (4, 3):
+        for index in range(max(0, len(compact) - length + 1)):
+            term = compact[index : index + length]
+            if any(fragment in term for fragment in stop_fragments):
+                continue
+            terms.append(term)
+    return terms
+
+
+def _expand_parent_chunks(ranked_chunks, all_chunks, max_contexts: int = 8, neighbor_window: int = 1):
+    selected = []
+    selected_ids = set()
+    chunks_by_parent = _chunks_by_parent_section(all_chunks)
+
+    for chunk in ranked_chunks:
+        for candidate in _parent_expansion_candidates(chunk, chunks_by_parent, neighbor_window):
+            chunk_id = candidate.get("id")
+            if chunk_id in selected_ids:
+                continue
+            selected.append(candidate)
+            selected_ids.add(chunk_id)
+            if len(selected) >= max_contexts:
+                return selected
+    return selected
+
+
+def _chunks_by_parent_section(chunks):
+    groups = {}
+    for chunk in chunks:
+        key = (
+            str(chunk.get("source", "")),
+            str(chunk.get("parent_title", "")),
+            _base_chunk_title(str(chunk.get("title", ""))),
+        )
+        groups.setdefault(key, []).append(chunk)
+    for grouped in groups.values():
+        grouped.sort(key=lambda item: int(item.get("chunk_index", 0)))
+    return groups
+
+
+def _parent_expansion_candidates(chunk, chunks_by_parent, neighbor_window: int):
+    key = (
+        str(chunk.get("source", "")),
+        str(chunk.get("parent_title", "")),
+        _base_chunk_title(str(chunk.get("title", ""))),
+    )
+    siblings = chunks_by_parent.get(key, [chunk])
+    chunk_index = int(chunk.get("chunk_index", 0))
+    nearby = [
+        sibling
+        for sibling in siblings
+        if abs(int(sibling.get("chunk_index", 0)) - chunk_index) <= neighbor_window
+    ]
+    nearby.sort(
+        key=lambda sibling: (
+            abs(int(sibling.get("chunk_index", 0)) - chunk_index),
+            int(sibling.get("chunk_index", 0)),
+        )
+    )
+    return nearby or [chunk]
+
+
+def _base_chunk_title(title: str) -> str:
+    return re.sub(r"\s*/\s*part\s+\d+\s*$", "", str(title), flags=re.IGNORECASE).strip()
 
 
 def _hybrid_rerank_results(
