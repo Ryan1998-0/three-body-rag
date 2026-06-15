@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, Optional
 import urllib.request
 
@@ -15,6 +16,7 @@ def build_ollama_payload(
         "options": {
             "temperature": 0.1,
             "num_ctx": 8192,
+            "num_predict": _int_env("RAG_OLLAMA_NUM_PREDICT", 768),
         },
     }
     if system:
@@ -39,3 +41,10 @@ def ask_ollama(
     with urllib.request.urlopen(request, timeout=120) as response:
         body = json.loads(response.read().decode("utf-8"))
     return body["response"].strip()
+
+
+def _int_env(key: str, default: int) -> int:
+    try:
+        return int(os.getenv(key, str(default)))
+    except (TypeError, ValueError):
+        return default

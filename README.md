@@ -382,14 +382,19 @@ http://127.0.0.1:8766
    - 如果 embeddings.npy 存在，也做 embedding candidate recall
    - 預設先召回 top 50 candidates，再 rerank 成 top 5 chunks
    - 如果 embeddings.npy 不存在或載入失敗，仍會用 pure keyword candidates rerank
+→ Evidence Extraction Agent
+   - 接收 Question Extraction Agent output 與 retrieved top 5 chunks
+   - 從 chunks 中抽出可直接回答問題的 evidence facts
+   - 每條 evidence 保留來源編號，供 QA Agent 優先使用
 → QA Agent
    - 接收 original question
    - 接收 Keyword Extraction Agent 輸出的 keywords
    - 接收 Question Extraction Agent 輸出的 refined question
+   - 接收 Evidence Extraction Agent 輸出的 evidence facts
    - 接收 retrieved top 5 chunks
-   - 只根據 retrieved chunks 產生 final answer
+   - 只根據 evidence facts 與 retrieved chunks 產生 final answer
 → Output
-   - 顯示原始問題、keywords、refined question、hybrid query variants、檢索來源、final answer
+   - 顯示原始問題、keywords、refined question、hybrid query variants、檢索來源、evidence facts、final answer
 ```
 
 ### Agent 分工與 prompt 隔離
@@ -403,8 +408,11 @@ Keyword Extraction Agent
 Question Extraction Agent
 → 分析提問者真正想問的問題，不回答使用者問題
 
+Evidence Extraction Agent
+→ 從 retrieved chunks 抽出具來源編號的 evidence facts，不回答使用者問題
+
 QA Agent
-→ 整合 original question、keywords、refined question 與 retrieved chunks，產生 final answer
+→ 整合 refined question、evidence facts 與 retrieved chunks，產生 final answer
 ```
 
 這是：
@@ -429,6 +437,17 @@ verifier_model = ollama:qwen2.5:7b
 answer_model = openai:gpt-5.5
 fallback_model = anthropic:claude-opus-4-1-20250805
 ```
+
+### 最新三體 direct30 評估
+
+Evidence Extraction Agent 加入後，使用 `qwen2.5:7b`、top 5 chunks、chunk size / stride `1200/600` 重跑 direct30 lenient evaluation：
+
+- Raw answers：`evals/three_body_qwen/three_agent_direct30_lenient_raw_answers_20260615-090124.jsonl`
+- Scored report：`evals/three_body_qwen/three_agent_direct30_lenient_scored_report_20260615-090124.md`
+- Result：`129 / 150 = 86.0 / 100`
+- Runtime errors：`0`
+
+主要改善點是 D30Q29 這類「處置/結果」題會先抽出具來源的 evidence，再要求 QA 保留「有罪、自由、活到失去希望」等關鍵處置詞。仍需注意 D30Q07 這類 query rewrite / retrieval 錯位題，Evidence Agent 無法修正錯誤檢索來源。
 
 ### 無相關來源處理
 

@@ -13,6 +13,7 @@ from rag_demo.entity_aliases import expand_query_with_aliases
 from rag_demo.evidence_policy import build_evidence_policy, has_answerable_event_evidence, sequence_number, should_include_evidence_line
 from rag_demo.entity_resolution import answer_entity_existence, extract_entity_numbers, parse_entity_existence_query
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
+from rag_demo.evidence_extraction_agent import build_evidence_extraction_prompt, render_evidence_context
 from rag_demo.index_store import load_index, save_index
 from rag_demo.keyword_extraction import parse_keywords_output
 from rag_demo.ollama_client import build_ollama_payload
@@ -1268,14 +1269,63 @@ Owner: Team B
                     "content": "葉文潔收到警告後仍回覆訊號。",
                 }
             ],
+            extracted_evidence="- [來源 1] 葉文潔收到警告後仍回覆訊號。",
         )
 
         self.assertIn("Question Extraction Agent Output", prompt)
         self.assertIn("葉文潔為什麼回覆三體文明？", prompt)
+        self.assertIn("Evidence Extraction Agent Output", prompt)
+        self.assertIn("葉文潔收到警告後仍回覆訊號", prompt)
         self.assertNotIn("Keyword Extraction Agent Output", prompt)
         self.assertNotIn("葉文潔, 紅岸基地, 三體文明", prompt)
         self.assertNotIn("Original Question", prompt)
         self.assertIn("Retrieved Chunks", prompt)
+
+    def test_evidence_extraction_prompt_requests_sourced_facts(self):
+        prompt = build_evidence_extraction_prompt(
+            original_question="她為什麼這樣做？",
+            refined_question="葉文潔為什麼回覆三體文明？",
+            keywords=["葉文潔", "三體文明"],
+            chunks=[
+                {
+                    "source": "three-body.txt",
+                    "parent_title": "Narrative Text",
+                    "title": "紅岸 / part 1",
+                    "content": "葉文潔收到警告後仍回覆訊號。",
+                }
+            ],
+        )
+
+        self.assertIn("Question Extraction Agent Output", prompt)
+        self.assertIn("Keyword Extraction Agent Output", prompt)
+        self.assertIn("Retrieved Chunks", prompt)
+        self.assertIn("每條 evidence 必須保留來源編號", prompt)
+        self.assertIn("[來源 1]", prompt)
+
+    def test_evidence_context_prioritizes_answer_cue_terms(self):
+        context = render_evidence_context(
+            chunks=[
+                {
+                    "source": "three-body.txt",
+                    "parent_title": "Narrative Text",
+                    "title": "32.監聽員 / part 9",
+                    "content": (
+                        "元首對發出警告信息的監聽員沒有什麼憤恨。"
+                        "毫無疑問你是有罪的，你是三體世界所有輪迴的文明中最大的罪犯。"
+                        "但三體法律實在出現一個例外——你自由了。"
+                        "我要讓你活到她失去一切希望的那一天。"
+                    ),
+                }
+            ],
+            question="三體元首如何處置發出警告的 1379 號監聽員？",
+            keywords=["三體", "元首", "處置", "警告", "1379號", "監聽員"],
+            max_chars_per_chunk=500,
+            max_snippets_per_chunk=3,
+        )
+
+        self.assertIn("有罪", context)
+        self.assertIn("自由", context)
+        self.assertIn("失去一切希望", context)
 
     def test_three_agent_output_includes_hybrid_query_variants(self):
         output = _format_three_agent_output(
@@ -1297,13 +1347,17 @@ Owner: Team B
                     "rerank_trace": "kw:question_agent:1",
                 }
             ],
+            extracted_evidence="- [來源 1] 葉文潔收到警告後仍回覆訊號。",
             answer="她希望三體文明介入人類世界。",
-            timing={"retrieval": 0.12, "qa_agent": 1.23},
+            timing={"retrieval": 0.12, "evidence_extraction_agent": 0.45, "qa_agent": 1.23},
         )
 
         self.assertIn("Hybrid Retrieval Query Variants", output)
         self.assertIn("- question_agent: 葉文潔為什麼回覆三體文明？", output)
+        self.assertIn("Evidence Extraction Agent", output)
+        self.assertIn("葉文潔收到警告後仍回覆訊號", output)
         self.assertIn("trace=kw:question_agent:1", output)
+        self.assertIn("evidence_extraction_agent: 0.45s", output)
         self.assertIn("qa_agent: 1.23s", output)
 
     def test_format_output_includes_node_timing_trace(self):

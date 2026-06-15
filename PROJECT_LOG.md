@@ -1665,3 +1665,36 @@ docs/answer_quality_eval_2026-06-12_current_architecture.md
 
 - 這次是泛用規則修復，不是重新評測完整 20 題。若要評估整體改善，需要重跑 `evals/three_body_qwen/run_eval.py`。
 - `data/raw/three-body-1.txt` 仍是本機抽取文本，未經確認前不應推送到 GitHub。
+
+## 2026-06-15 三體 RAG：加入 Evidence Extraction Agent
+
+使用者要求在既有 Keyword Extraction Agent、Question Extraction Agent、QA Agent 之外，再加入一支 Evidence Extraction Agent。
+
+更新後主流程：
+
+- Keyword Extraction Agent：抽取 retrieval keywords。
+- Question Extraction Agent：把使用者問題轉成真正要回答的問題。
+- Hybrid Retrieval + Rerank：用 original question、question agent output、keywords、combined query 召回並 rerank top 5 chunks。
+- Evidence Extraction Agent：只看 retrieved chunks，抽出具來源編號的 evidence facts。
+- QA Agent：同時接收 retrieved chunks 與 Evidence Extraction Agent output；retrieved chunks 仍是最高優先的 final source of truth。
+
+實作重點：
+
+- 新增 `rag_demo/evidence_extraction_agent.py`。
+- `rag_demo/query.py` 在 retrieval 後呼叫 Evidence Extraction Agent，並在輸出中顯示 evidence facts 與耗時。
+- `rag_demo/qa_agent.py` 新增 `extracted_evidence` prompt 區塊；強化處置題、核心做法題與具體術語保留規則。
+- `rag_demo/ollama_client.py` 新增 `RAG_OLLAMA_NUM_PREDICT`，預設 `768`，避免 evidence prompt 造成過長輸出與 timeout。
+- `tests/test_rag_pipeline.py` 增加 evidence prompt、evidence cue ranking、QA prompt 與輸出格式測試。
+
+評估紀錄：
+
+- 初版 Evidence Agent full run：`evals/three_body_qwen/three_agent_direct30_lenient_scored_report_20260615-075204.md`，`119 / 150 = 79.3`。
+- full context tightened prompt run：`evals/three_body_qwen/three_agent_direct30_lenient_scored_report_20260615-080400.md`，部分題 timeout。
+- focused evidence context run：`evals/three_body_qwen/three_agent_direct30_lenient_scored_report_20260615-083514.md`，`120 / 150 = 80.0`。
+- final cue-weighted Evidence Agent run：`evals/three_body_qwen/three_agent_direct30_lenient_scored_report_20260615-090124.md`，`129 / 150 = 86.0`，0 runtime errors。
+
+結果判斷：
+
+- 相比未加 Evidence Agent 前的主流程 `128 / 150 = 85.3`，最終版本小幅提升到 `129 / 150 = 86.0`。
+- Evidence Agent 對 D30Q29 這類「處置/結果」題有效，能保留「有罪、自由、活到地球文明失去希望」。
+- 主要殘留問題不是 evidence extraction 本身，而是 query rewrite / retrieval 錯位，例如 D30Q07 被導向〈蟲子〉段落，沒有抓到「物理學從來沒有存在過」相關來源。

@@ -1,0 +1,2 @@
+{"id": "D30Q05", "question": "紅岸基地中，葉文潔發現太陽在星際通訊上有什麼作用？", "answer_output": "", "final_answer": "", "score": 0, "max_score": 5, "matched": [], "missed": ["提到太陽能放大、增益或反射訊號", "提到這與電波、訊號或發射有關", "提到能用於星際或遠距離通訊"], "error": "TimeoutError: timed out", "elapsed_seconds": 132.888}
+{"id": "D30Q09", "question": "汪淼看到倒數計時後，對方想逼他停止哪一類研究？", "answer_output": "", "final_answer": "", "score": 0, "max_score": 5, "matched": [], "missed": ["提到汪淼", "提到倒數或倒計時", "提到停止奈米、納米、飛刃或材料研究"], "error": "TimeoutError: timed out", "elapsed_seconds": 121.569}

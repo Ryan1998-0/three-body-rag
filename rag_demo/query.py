@@ -12,6 +12,7 @@ from rag_demo.entity_aliases import expand_query_with_aliases
 from rag_demo.entity_resolution import answer_entity_existence
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
 from rag_demo.evidence_policy import build_evidence_policy
+from rag_demo.evidence_extraction_agent import extract_evidence
 from rag_demo.index_store import load_index
 from rag_demo.keyword_extraction import extract_keywords
 from rag_demo.model_providers import ask_model
@@ -82,11 +83,22 @@ def answer_question(question: str, model: str, top_k: int = 5) -> str:
     timing["retrieval"] = perf_counter() - started_at
 
     started_at = perf_counter()
+    extracted_evidence = extract_evidence(
+        original_question=question,
+        refined_question=refined_question,
+        keywords=keywords,
+        chunks=results,
+        model=model,
+    )
+    timing["evidence_extraction_agent"] = perf_counter() - started_at
+
+    started_at = perf_counter()
     answer = answer_with_qa_agent(
         original_question=question,
         refined_question=refined_question,
         keywords=keywords,
         chunks=results,
+        extracted_evidence=extracted_evidence,
         model=model,
     )
     timing["qa_agent"] = perf_counter() - started_at
@@ -97,6 +109,7 @@ def answer_question(question: str, model: str, top_k: int = 5) -> str:
         keywords,
         refined_question,
         results,
+        extracted_evidence,
         answer,
         timing=timing,
     )
@@ -1304,6 +1317,7 @@ def _format_three_agent_output(
     keywords,
     refined_question: str,
     results,
+    extracted_evidence: str,
     answer: str,
     timing=None,
 ) -> str:
@@ -1342,6 +1356,9 @@ Hybrid Retrieval Query Variants:
 
 檢索來源 Top {len(results)}：
 {sources}
+
+Evidence Extraction Agent:
+{str(extracted_evidence or '').strip() or '無'}
 {timing_text}
 
 Final Answer:
@@ -1359,6 +1376,7 @@ def _format_timing(timing) -> str:
         "query_rewrite",
         "load_embeddings",
         "retrieval",
+        "evidence_extraction_agent",
         "planned_retrieval",
         "event_list_retrieval",
         "sparse_fact_retrieval",
