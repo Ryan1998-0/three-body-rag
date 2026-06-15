@@ -407,6 +407,12 @@ evals/three_body_qwen/first20_retrieval_upper_bound_report_20260615-162647.md
 Result: 100 / 100
 ```
 
+Graph Retrieval / GraphRAG 增量升級路線見：
+
+```text
+docs/graphrag_incremental_roadmap.md
+```
+
 目前 query 流程：
 
 ```text
