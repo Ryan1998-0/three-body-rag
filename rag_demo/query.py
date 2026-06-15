@@ -119,29 +119,21 @@ def _build_three_agent_query_variants(question: str, refined_question: str, keyw
     keyword_query = " ".join(str(keyword).strip() for keyword in keywords if str(keyword).strip())
     original_query = " ".join(str(question).split())
     question_agent_query = " ".join(str(refined_question).split())
-    combined_query = " ".join(
-        item
-        for item in [
-            original_query,
-            question_agent_query,
-            keyword_query,
-        ]
-        if item
-    )
     variants = [
         {"name": "original", "query": original_query, "weight": 1.00},
         {"name": "question_agent", "query": question_agent_query, "weight": 1.10},
         {"name": "keywords", "query": keyword_query, "weight": 1.00},
-        {"name": "combined", "query": combined_query, "weight": 0.85},
+        {"name": "keyword_only", "query": keyword_query, "weight": 0.85},
     ]
 
     unique = []
     seen = set()
     for variant in variants:
         query = str(variant["query"]).strip()
-        if not query or query in seen:
+        key = (variant["name"], query)
+        if not query or key in seen:
             continue
-        seen.add(query)
+        seen.add(key)
         unique.append({**variant, "query": query})
     return unique
 
@@ -235,6 +227,8 @@ def _reciprocal_rank_score(rank: int, weight: float) -> float:
 
 def _apply_rerank_lexical_coverage_boost(candidates, question: str, refined_question: str, keywords) -> None:
     terms = _relevant_rerank_terms(" ".join([question, refined_question, " ".join(keywords)]))
+    choice_terms = _choice_rerank_terms(question, keywords)
+    choice_anchor = _choice_subject_anchor(keywords, choice_terms)
     if not terms:
         return
     for candidate in candidates.values():
@@ -243,6 +237,41 @@ def _apply_rerank_lexical_coverage_boost(candidates, question: str, refined_ques
         )
         covered = sum(1 for term in terms if _compact_rerank_text(term) in text)
         candidate["score"] += 0.16 * (covered / len(terms))
+        if choice_anchor and choice_terms:
+            anchor_hit = _compact_rerank_text(choice_anchor) in text
+            choice_hits = sum(1 for term in choice_terms if _compact_rerank_text(term) in text)
+            if anchor_hit and choice_hits:
+                candidate["score"] += 2.2 + (0.18 * min(choice_hits, 2))
+
+
+def _choice_rerank_terms(question_text: str, keywords) -> list:
+    compact_question = _compact_rerank_text(question_text)
+    if "還是" not in compact_question and "或" not in compact_question:
+        return []
+    choice_terms = []
+    for keyword in keywords:
+        cleaned = str(keyword).strip()
+        compact_keyword = _compact_rerank_text(cleaned)
+        if len(compact_keyword) < 2:
+            continue
+        for marker in ("還是", "或"):
+            marker_index = compact_question.find(marker)
+            if marker_index < 0:
+                continue
+            window = compact_question[max(0, marker_index - 10) : marker_index + 12]
+            if compact_keyword in window:
+                choice_terms.append(cleaned)
+                break
+    return list(dict.fromkeys(choice_terms))
+
+
+def _choice_subject_anchor(keywords, choice_terms) -> str:
+    compact_choices = {_compact_rerank_text(term) for term in choice_terms}
+    for keyword in keywords:
+        cleaned = str(keyword).strip()
+        if cleaned and _compact_rerank_text(cleaned) not in compact_choices:
+            return cleaned
+    return ""
 
 
 def _relevant_rerank_terms(text: str):

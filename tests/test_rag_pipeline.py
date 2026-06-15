@@ -1194,10 +1194,13 @@ Owner: Team B
 
         names = [variant["name"] for variant in variants]
         queries = "\n".join(variant["query"] for variant in variants)
-        self.assertEqual(names, ["original", "question_agent", "keywords", "combined"])
+        self.assertEqual(names, ["original", "question_agent", "keywords", "keyword_only"])
         self.assertIn("她為什麼回覆？", queries)
         self.assertIn("葉文潔為什麼回覆三體文明？", queries)
         self.assertIn("葉文潔 三體文明 紅岸基地", queries)
+        self.assertEqual(variants[3]["query"], "葉文潔 三體文明 紅岸基地")
+        self.assertNotIn("她為什麼回覆？", variants[3]["query"])
+        self.assertNotIn("葉文潔為什麼回覆三體文明？", variants[3]["query"])
 
     def test_hybrid_rerank_uses_multiple_query_variants_before_top_k(self):
         chunks = [
@@ -1243,6 +1246,51 @@ Owner: Team B
         self.assertEqual(len(results), 2)
         self.assertTrue(all(result["retrieval_method"] == "hybrid_rerank" for result in results))
         self.assertTrue(any("kw:question_agent" in result["rerank_trace"] for result in results))
+
+    def test_hybrid_rerank_prioritizes_subject_and_choice_cooccurrence(self):
+        chunks = [
+            {
+                "id": "definition",
+                "source": "three-body.txt",
+                "parent_title": "Narrative Text",
+                "title": "地球三體組織派別",
+                "content": (
+                    "地球三體組織分為降臨派和拯救派。"
+                    "降臨派與拯救派一直對立。"
+                    "降臨派主張毀滅人類，拯救派崇拜三體文明。"
+                ),
+            },
+            {
+                "id": "direct",
+                "source": "three-body.txt",
+                "parent_title": "Narrative Text",
+                "title": "人物歸屬",
+                "content": "申玉菲曾位居組織核心，但她在內心深處是一名堅定的拯救派。",
+            },
+            {
+                "id": "noise",
+                "source": "three-body.txt",
+                "parent_title": "Narrative Text",
+                "title": "無關背景",
+                "content": "申玉菲在房間裏玩三體遊戲。",
+            },
+        ]
+        question = "申玉菲在地球三體組織中，較接近降臨派還是拯救派？"
+        keywords = ["申玉菲", "地球三體組織", "降臨派", "拯救派"]
+        variants = _build_three_agent_query_variants(question, question, keywords)
+
+        results = _hybrid_rerank_results(
+            query_variants=variants,
+            question=question,
+            refined_question=question,
+            keywords=keywords,
+            chunks=chunks,
+            embeddings=None,
+            top_k=3,
+            candidate_k=3,
+        )
+
+        self.assertEqual(results[0]["id"], "direct")
 
     def test_parse_keywords_output_reads_json_keywords(self):
         keywords = parse_keywords_output('{"keywords": ["葉文潔", "紅岸基地", "三體文明"]}')

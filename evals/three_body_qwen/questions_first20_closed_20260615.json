@@ -1,0 +1,278 @@
+[
+  {
+    "id": "F20Q01",
+    "category": "人物事件",
+    "question": "葉哲泰是在什麼場合被打死的？",
+    "standard_answer": "葉哲泰是在文化大革命期間的批判會或批鬥場合，被紅衛兵打死。",
+    "criteria": [
+      {"label": "葉哲泰", "weight": 1, "aliases": ["葉哲泰"]},
+      {"label": "批判會或批鬥", "weight": 2, "aliases": ["批判會", "批鬥", "批判"]},
+      {"label": "被紅衛兵毆打或迫害", "weight": 1, "aliases": ["紅衛兵", "毆打", "迫害"]},
+      {"label": "死亡或被打死", "weight": 1, "aliases": ["打死", "死亡", "死了", "被打死"]}
+    ],
+    "forbidden": [
+      {"label": "錯說自然死亡", "penalty": 3, "aliases": ["自然死亡", "病死"]}
+    ]
+  },
+  {
+    "id": "F20Q02",
+    "category": "書籍影響",
+    "question": "讓葉文潔開始理性思考人類之惡的是哪一本書？",
+    "standard_answer": "是《寂靜的春天》。",
+    "criteria": [
+      {"label": "寂靜的春天", "weight": 4, "aliases": ["寂靜的春天", "Silent Spring"]},
+      {"label": "葉文潔受到該書影響", "weight": 1, "aliases": ["葉文潔", "人類之惡", "理性思考"]}
+    ],
+    "forbidden": [
+      {"label": "錯說三體遊戲", "penalty": 3, "aliases": ["三體遊戲"]}
+    ]
+  },
+  {
+    "id": "F20Q03",
+    "category": "人物事件",
+    "question": "白沐霖拿走葉文潔整理的信件後，葉文潔被牽連成什麼性質的問題？",
+    "standard_answer": "她被牽連成政治問題，信件或材料被當作可審查的罪證。",
+    "criteria": [
+      {"label": "白沐霖", "weight": 1, "aliases": ["白沐霖"]},
+      {"label": "信件或材料", "weight": 1, "aliases": ["信件", "材料", "信"]},
+      {"label": "政治問題", "weight": 2, "aliases": ["政治問題", "政治", "反動"]},
+      {"label": "罪證或審查", "weight": 1, "aliases": ["罪證", "審查", "調查", "關押"]}
+    ],
+    "forbidden": []
+  },
+  {
+    "id": "F20Q04",
+    "category": "紅岸基地",
+    "question": "葉文潔後來被調到哪一個軍事基地工作？",
+    "standard_answer": "她被調到紅岸基地工作。",
+    "criteria": [
+      {"label": "葉文潔", "weight": 1, "aliases": ["葉文潔"]},
+      {"label": "紅岸基地", "weight": 4, "aliases": ["紅岸基地", "紅岸"]}
+    ],
+    "forbidden": [
+      {"label": "錯說審判日號", "penalty": 3, "aliases": ["審判日號"]}
+    ]
+  },
+  {
+    "id": "F20Q05",
+    "category": "紅岸基地",
+    "question": "葉文潔在紅岸基地發現哪一個天體可以放大或反射訊號？",
+    "standard_answer": "她發現太陽可以作為訊號放大或反射的媒介。",
+    "criteria": [
+      {"label": "太陽", "weight": 3, "aliases": ["太陽"]},
+      {"label": "放大或增益", "weight": 1, "aliases": ["放大", "增益"]},
+      {"label": "訊號或電波", "weight": 1, "aliases": ["訊號", "信號", "電波", "發射"]}
+    ],
+    "forbidden": [
+      {"label": "錯說月亮", "penalty": 3, "aliases": ["月亮"]}
+    ]
+  },
+  {
+    "id": "F20Q06",
+    "category": "紅岸基地",
+    "question": "葉文潔第一次收到的外星回訊，是由三體世界的哪一類人發出的？",
+    "standard_answer": "是三體世界的 1379 號監聽員發出的。",
+    "criteria": [
+      {"label": "三體世界", "weight": 1, "aliases": ["三體世界", "三體文明"]},
+      {"label": "1379 號", "weight": 2, "aliases": ["1379"]},
+      {"label": "監聽員", "weight": 2, "aliases": ["監聽員"]}
+    ],
+    "forbidden": [
+      {"label": "錯說元首發出", "penalty": 2, "aliases": ["元首發出"]}
+    ]
+  },
+  {
+    "id": "F20Q07",
+    "category": "紅岸基地",
+    "question": "1379 號監聽員給地球的關鍵警告是要不要回覆？",
+    "standard_answer": "他的關鍵警告是不要回覆；一旦回覆，三體世界就能定位地球。",
+    "criteria": [
+      {"label": "1379 號監聽員", "weight": 1, "aliases": ["1379", "監聽員"]},
+      {"label": "不要回覆", "weight": 2, "aliases": ["不要回答", "不要回覆", "不要回信"]},
+      {"label": "會暴露或定位地球", "weight": 2, "aliases": ["定位", "暴露", "找到", "地球"]}
+    ],
+    "forbidden": [
+      {"label": "錯說鼓勵回覆", "penalty": 3, "aliases": ["鼓勵回覆", "應該回覆"]}
+    ]
+  },
+  {
+    "id": "F20Q08",
+    "category": "紅岸基地",
+    "question": "葉文潔是否遵守 1379 號監聽員不要回覆的警告？",
+    "standard_answer": "沒有。她仍然回覆，並邀請三體文明到地球來。",
+    "criteria": [
+      {"label": "沒有遵守", "weight": 2, "aliases": ["沒有", "未遵守", "不遵守", "沒有遵守"]},
+      {"label": "她回覆了訊息", "weight": 1, "aliases": ["回覆", "回答", "發送"]},
+      {"label": "邀請三體文明來地球", "weight": 2, "aliases": ["到這裏來吧", "到這里來吧", "來到地球", "三體文明"]}
+    ],
+    "forbidden": [
+      {"label": "錯說遵守警告", "penalty": 4, "aliases": ["遵守了", "沒有回覆"]}
+    ]
+  },
+  {
+    "id": "F20Q09",
+    "category": "科學邊界",
+    "question": "楊冬遺書中最核心的那句話，是說哪一門學科從來沒有存在過？",
+    "standard_answer": "她說物理學從來就沒有存在過。",
+    "criteria": [
+      {"label": "楊冬或遺書", "weight": 1, "aliases": ["楊冬", "遺書"]},
+      {"label": "物理學", "weight": 3, "aliases": ["物理學", "物理"]},
+      {"label": "從來沒有存在過", "weight": 1, "aliases": ["從來就沒有存在過", "沒有存在過", "不存在"]}
+    ],
+    "forbidden": [
+      {"label": "錯說數學", "penalty": 3, "aliases": ["數學從來", "數學不存在"]}
+    ]
+  },
+  {
+    "id": "F20Q10",
+    "category": "汪淼",
+    "question": "汪淼被倒數計時威脅時，被要求停止的是哪一類研究？",
+    "standard_answer": "他被要求停止奈米材料或飛刃相關研究。",
+    "criteria": [
+      {"label": "汪淼", "weight": 1, "aliases": ["汪淼"]},
+      {"label": "倒數計時", "weight": 1, "aliases": ["倒數", "倒計時"]},
+      {"label": "奈米或納米材料", "weight": 2, "aliases": ["奈米", "納米", "材料"]},
+      {"label": "停止研究", "weight": 1, "aliases": ["停止", "停下", "研究"]}
+    ],
+    "forbidden": [
+      {"label": "錯說天文研究", "penalty": 2, "aliases": ["天文研究"]}
+    ]
+  },
+  {
+    "id": "F20Q11",
+    "category": "宇宙閃爍",
+    "question": "汪淼和沙瑞山看到的宇宙閃爍，主要對應哪一種背景輻射？",
+    "standard_answer": "對應 3K 宇宙微波背景輻射。",
+    "criteria": [
+      {"label": "宇宙背景輻射", "weight": 2, "aliases": ["宇宙背景輻射", "背景輻射"]},
+      {"label": "3K", "weight": 2, "aliases": ["3K", "三K"]},
+      {"label": "微波", "weight": 1, "aliases": ["微波"]}
+    ],
+    "forbidden": [
+      {"label": "錯說可見光背景", "penalty": 2, "aliases": ["可見光背景"]}
+    ]
+  },
+  {
+    "id": "F20Q12",
+    "category": "三體遊戲",
+    "question": "三體遊戲中，太陽運行無規律、文明難以穩定生存的時期叫什麼？",
+    "standard_answer": "叫亂紀元。",
+    "criteria": [
+      {"label": "亂紀元", "weight": 4, "aliases": ["亂紀元"]},
+      {"label": "太陽無規律或不可預測", "weight": 1, "aliases": ["無規律", "不可預測", "太陽"]}
+    ],
+    "forbidden": [
+      {"label": "錯說答案是恆紀元", "penalty": 4, "aliases": ["叫恆紀元", "是恆紀元", "稱為恆紀元"]}
+    ]
+  },
+  {
+    "id": "F20Q13",
+    "category": "三體遊戲",
+    "question": "三體遊戲中，相對穩定、文明可以發展的時期叫什麼？",
+    "standard_answer": "叫恆紀元。",
+    "criteria": [
+      {"label": "恆紀元", "weight": 4, "aliases": ["恆紀元"]},
+      {"label": "穩定並可發展文明", "weight": 1, "aliases": ["穩定", "發展", "文明"]}
+    ],
+    "forbidden": [
+      {"label": "錯說亂紀元", "penalty": 4, "aliases": ["亂紀元"]}
+    ]
+  },
+  {
+    "id": "F20Q14",
+    "category": "三體遊戲",
+    "question": "三日凌空在三體遊戲中造成的直接後果是文明延續還是毀滅？",
+    "standard_answer": "直接後果是毀滅，而不是文明延續。",
+    "criteria": [
+      {"label": "三日凌空", "weight": 2, "aliases": ["三日凌空", "三顆太陽", "三個太陽"]},
+      {"label": "毀滅", "weight": 2, "aliases": ["毀滅", "滅亡", "災難"]},
+      {"label": "不是延續", "weight": 1, "aliases": ["不是", "而不是", "無法延續"]}
+    ],
+    "forbidden": [
+      {"label": "錯說文明延續", "penalty": 4, "aliases": ["文明延續", "繼續繁榮"]}
+    ]
+  },
+  {
+    "id": "F20Q15",
+    "category": "三體問題",
+    "question": "魏成主要研究的是哪一個天體力學問題？",
+    "standard_answer": "魏成主要研究三體問題。",
+    "criteria": [
+      {"label": "魏成", "weight": 1, "aliases": ["魏成"]},
+      {"label": "三體問題", "weight": 4, "aliases": ["三體問題"]}
+    ],
+    "forbidden": [
+      {"label": "錯說二體問題", "penalty": 3, "aliases": ["二體問題"]}
+    ]
+  },
+  {
+    "id": "F20Q16",
+    "category": "地球三體組織",
+    "question": "申玉菲在地球三體組織中，較接近降臨派還是拯救派？",
+    "standard_answer": "申玉菲較接近拯救派。",
+    "criteria": [
+      {"label": "申玉菲", "weight": 1, "aliases": ["申玉菲"]},
+      {"label": "拯救派", "weight": 4, "aliases": ["拯救派", "救贖派"]}
+    ],
+    "forbidden": [
+      {"label": "錯說降臨派", "penalty": 4, "aliases": ["較接近降臨派", "屬於降臨派", "是降臨派"]}
+    ]
+  },
+  {
+    "id": "F20Q17",
+    "category": "地球三體組織",
+    "question": "地球三體組織中的降臨派，是希望三體文明拯救人類還是毀滅人類？",
+    "standard_answer": "降臨派希望三體文明降臨並毀滅或懲罰人類。",
+    "criteria": [
+      {"label": "降臨派", "weight": 1, "aliases": ["降臨派"]},
+      {"label": "三體文明降臨", "weight": 1, "aliases": ["三體文明", "降臨"]},
+      {"label": "毀滅或懲罰人類", "weight": 3, "aliases": ["毀滅", "消滅", "懲罰", "人類"]}
+    ],
+    "forbidden": [
+      {"label": "錯說拯救人類", "penalty": 4, "aliases": ["拯救人類", "拯救派"]}
+    ]
+  },
+  {
+    "id": "F20Q18",
+    "category": "古箏行動",
+    "question": "古箏行動中，用來切割審判日號的是奈米絲還是普通鋼纜？",
+    "standard_answer": "用的是奈米絲或飛刃材料，不是普通鋼纜。",
+    "criteria": [
+      {"label": "古箏行動", "weight": 1, "aliases": ["古箏行動", "古箏"]},
+      {"label": "奈米或納米絲", "weight": 2, "aliases": ["奈米絲", "納米絲", "奈米", "納米"]},
+      {"label": "飛刃材料", "weight": 1, "aliases": ["飛刃"]},
+      {"label": "切割審判日號", "weight": 1, "aliases": ["切割", "審判日", "船"]}
+    ],
+    "forbidden": [
+      {"label": "錯說普通鋼纜", "penalty": 4, "aliases": ["普通鋼纜", "鋼纜"]}
+    ]
+  },
+  {
+    "id": "F20Q19",
+    "category": "智子",
+    "question": "智子是由哪一種粒子改造成的？",
+    "standard_answer": "智子是由質子改造成的。",
+    "criteria": [
+      {"label": "智子", "weight": 1, "aliases": ["智子"]},
+      {"label": "質子", "weight": 4, "aliases": ["質子"]}
+    ],
+    "forbidden": [
+      {"label": "錯說電子", "penalty": 3, "aliases": ["電子"]},
+      {"label": "錯說中子", "penalty": 3, "aliases": ["中子"]}
+    ]
+  },
+  {
+    "id": "F20Q20",
+    "category": "智子",
+    "question": "智子到達地球後，主要目標是促進還是鎖死人類基礎科學？",
+    "standard_answer": "主要目標是鎖死或阻礙人類基礎科學，而不是促進它。",
+    "criteria": [
+      {"label": "智子", "weight": 1, "aliases": ["智子"]},
+      {"label": "鎖死或阻礙", "weight": 2, "aliases": ["鎖死", "阻礙", "破壞", "干擾"]},
+      {"label": "人類基礎科學", "weight": 2, "aliases": ["人類", "基礎科學", "科學", "物理"]}
+    ],
+    "forbidden": [
+      {"label": "錯說促進科學", "penalty": 4, "aliases": ["促進", "幫助發展", "提升科學"]}
+    ]
+  }
+]
