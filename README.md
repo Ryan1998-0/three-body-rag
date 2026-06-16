@@ -1,21 +1,21 @@
 # Three Body RAG
 
-Retrieval-first RAG project for testing and improving a V2 retrieval pipeline with BM25, Dense Retrieval, RRF, Reranker, Parent Chunk Expansion, and Graph Retrieval.
+這是一個 Retrieval-first 的 RAG 專案，用來測試與優化 V2 檢索架構。核心技術包含 BM25、Dense Retrieval、RRF、Reranker、Parent Chunk Expansion 與 Graph Retrieval。
 
-## Workflow
+## 工作流
 
 ```text
-Question
+問題
 ↓
-Query Rewrite
+查詢改寫（Query Rewrite）
 ↓
-Entity Extraction
+實體抽取（Entity Extraction）
 ↓
 Metadata Filter
 ↓
-Query Classifier
+問題分類器（Query Classifier）
 ↓
-Graph Retrieval + BM25(original question) + Dense(original question)
+Graph Retrieval + BM25（原始問題）+ Dense（原始問題）
 ↓
 Graph / Vector Merge
 ↓
@@ -28,89 +28,89 @@ Top 8 Context
 LLM / QA Agent
 ```
 
-## Architecture Notes
+## 架構重點
 
-- BM25 and Dense Retrieval both use the original question.
-- Query Rewrite is auxiliary and does not replace the original question.
-- Graph Retrieval adds entity / relation evidence for people, organizations, factions, events, and multi-hop questions.
-- Graph results are converted back into supporting chunks before merging with vector candidates.
-- RRF merges BM25 and Dense ranked lists.
-- Reranker ranks the merged candidates.
-- Parent Chunk Expansion adds nearby chunks from the same parent section.
-- Final answer generation uses Top 8 Context.
+- BM25 和 Dense Retrieval 都使用原始問題。
+- Query Rewrite 只作為輔助訊號，不取代原始問題。
+- Graph Retrieval 用來補強人物、組織、派別、事件與多跳問題的關係證據。
+- Graph 結果會先轉回 supporting chunks，再和 vector candidates 合併。
+- RRF 用來合併 BM25 與 Dense 的 ranked lists。
+- Reranker 會重排合併後的候選 chunks。
+- Parent Chunk Expansion 會補同一段落附近的 chunks。
+- 最後使用 Top 8 Context 交給 LLM / QA Agent 回答。
 
-Detailed step-by-step workflow:
+每一步詳細說明：
 
 - [V2 Retrieval Workflow Steps](docs/v2_workflow_steps.md)
 
-GraphRAG roadmap:
+GraphRAG 增量優化路線：
 
 - [GraphRAG Incremental Upgrade Roadmap](docs/graphrag_incremental_roadmap.md)
 
-## How To Use
+## 如何使用
 
-Install dependencies:
+安裝依賴：
 
 ```bash
 python3 -m pip install -r requirements.txt
 ```
 
-Build index from `data/raw/*`:
+從 `data/raw/*` 建立 index：
 
 ```bash
 python3 -m rag_demo.ingest
 ```
 
-Ask a question:
+提問：
 
 ```bash
 python3 -m rag_demo.query '申玉菲在地球三體組織中屬於哪一派？'
 ```
 
-Specify a model:
+指定模型：
 
 ```bash
 python3 -m rag_demo.query '古箏行動的核心做法是什麼？' --model ollama:qwen2.5:7b
 ```
 
-Run the web app:
+啟動本機網站：
 
 ```bash
 python3 -m rag_demo.web_app --port 8766
 ```
 
-Open:
+開啟：
 
 ```text
 http://127.0.0.1:8766
 ```
 
-Run tests:
+執行測試：
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
-## Test Results
+## 測試結果
 
-| Evaluation | Result |
+| 評測項目 | 結果 |
 | --- | ---: |
-| First20 closed semantic score | `85 / 100` |
-| First20 retrieval upper bound | `100 / 100` |
-| Direct30 hybrid rerank final answer score | `124 / 150 = 82.7%` |
+| First20 封閉題語意評分 | `85 / 100` |
+| First20 Retrieval Upper Bound | `100 / 100` |
+| Direct30 hybrid rerank 最終回答分數 | `124 / 150 = 82.7%` |
 | Direct30 hybrid rerank Top5 evidence estimate | `140 / 150 = 93.3%` |
 | Direct30 diagnosis retrieval ceiling | `77 / 90 = 85.6%` |
-| Bad open-question current 5pt upper bound | `56 / 60 = 93.3%` |
-| Bad open-question current 3pt ceiling | `34 / 36 = 94.4%` |
+| 弱開放題 current 5pt upper bound | `56 / 60 = 93.3%` |
+| 弱開放題 current 3pt ceiling | `34 / 36 = 94.4%` |
 | Unit tests | `149 tests OK` |
 
-Evaluation files and simulated QA outputs:
+評測檔案與模擬問答輸出：
 
 - [Simulated Questions and Answers](docs/simulated_questions_and_answers.md)
 
-## Model Providers
+## 模型 Provider
 
-Supported model spec examples:
+支援的 model spec 範例：
 
 ```text
 ollama:qwen2.5:7b
@@ -120,4 +120,4 @@ openai:gpt-5.5
 anthropic:claude-opus-4-1-20250805
 ```
 
-The model provider controls the LLM / agent model. If the embedding model changes, rebuild the index with `rag_demo.ingest`.
+Model provider 控制的是 LLM / Agent 使用的模型。如果更換 embedding model，需要重新執行 `rag_demo.ingest` 建立新的 index。
