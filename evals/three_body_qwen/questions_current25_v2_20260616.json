@@ -1,0 +1,379 @@
+[
+  {
+    "id": "C25-S01",
+    "category": "標準答案題",
+    "question": "葉文潔第一次收到三體文明的警告時，對方勸她不要做什麼？",
+    "standard_answer": "不要回答三體文明的訊息。",
+    "lenient_criteria": [
+      {"label": "回答不要回覆或不要回答", "weight": 3, "aliases": ["不要回答", "不要回覆", "不要回应", "不要回應", "不要發送"]},
+      {"label": "提到三體文明或外星文明訊息", "weight": 2, "aliases": ["三體", "外星", "文明", "訊息", "信息"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說不要回答", "weight": 3, "aliases": ["不要回答", "不要回覆", "不要回應"]},
+      {"label": "明確說不要回答三體文明或外星文明訊息", "weight": 2, "aliases": ["三體文明", "外星文明", "收到的信息", "收到的訊息"]}
+    ]
+  },
+  {
+    "id": "C25-S02",
+    "category": "標準答案題",
+    "question": "紅岸基地中，葉文潔發現哪個天體可以放大星際通訊訊號？",
+    "standard_answer": "太陽。",
+    "lenient_criteria": [
+      {"label": "回答太陽", "weight": 5, "aliases": ["太陽", "太阳"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答太陽", "weight": 3, "aliases": ["太陽"]},
+      {"label": "提到放大或增益通訊訊號", "weight": 2, "aliases": ["放大", "增益", "鏡面", "訊號", "信號"]}
+    ]
+  },
+  {
+    "id": "C25-S03",
+    "category": "標準答案題",
+    "question": "汪淼看到倒數計時後，對方主要想逼他停止哪一類研究？",
+    "standard_answer": "停止奈米材料 / 飛刃相關研究。",
+    "lenient_criteria": [
+      {"label": "提到奈米、納米或飛刃", "weight": 3, "aliases": ["奈米", "納米", "飞刃", "飛刃"]},
+      {"label": "提到停止研究", "weight": 2, "aliases": ["停止", "停下", "中止", "研究"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答納米或奈米材料研究", "weight": 3, "aliases": ["奈米材料", "納米材料", "纳米材料"]},
+      {"label": "保留倒數計時逼迫停止的因果", "weight": 2, "aliases": ["倒數", "倒計時", "逼", "停止"]}
+    ]
+  },
+  {
+    "id": "C25-S04",
+    "category": "標準答案題",
+    "question": "汪淼和沙瑞山觀測到的宇宙閃爍，和哪種背景輻射有關？",
+    "standard_answer": "3K 宇宙微波背景輻射。",
+    "lenient_criteria": [
+      {"label": "提到宇宙背景輻射或微波背景", "weight": 3, "aliases": ["宇宙背景輻射", "背景輻射", "微波背景"]},
+      {"label": "提到 3K", "weight": 2, "aliases": ["3K", "三K", "三 k"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答 3K", "weight": 2, "aliases": ["3K"]},
+      {"label": "明確回答宇宙微波背景輻射", "weight": 3, "aliases": ["宇宙微波背景", "宇宙背景輻射", "微波背景輻射"]}
+    ]
+  },
+  {
+    "id": "C25-S05",
+    "category": "標準答案題",
+    "question": "三體遊戲中，相對穩定、文明可以發展的時期叫什麼？",
+    "standard_answer": "恆紀元。",
+    "lenient_criteria": [
+      {"label": "回答恆紀元", "weight": 5, "aliases": ["恆紀元", "恒紀元", "穩定紀元"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答恆紀元", "weight": 3, "aliases": ["恆紀元"]},
+      {"label": "提到穩定或文明發展", "weight": 2, "aliases": ["穩定", "發展", "文明"]}
+    ]
+  },
+  {
+    "id": "C25-S06",
+    "category": "標準答案題",
+    "question": "三體遊戲中的三日凌空會造成什麼後果？",
+    "standard_answer": "高溫災難會毀滅世界或文明。",
+    "lenient_criteria": [
+      {"label": "提到三個太陽或三日凌空", "weight": 2, "aliases": ["三日凌空", "三個太陽", "三顆太陽"]},
+      {"label": "提到毀滅或災難", "weight": 2, "aliases": ["毀滅", "滅亡", "災難", "浩劫"]},
+      {"label": "提到高溫、燃燒或火海", "weight": 1, "aliases": ["高溫", "酷熱", "燃燒", "火海", "熔化"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說三日凌空", "weight": 2, "aliases": ["三日凌空"]},
+      {"label": "明確說高溫使世界或文明毀滅", "weight": 3, "aliases": ["毀滅", "熔化", "火海", "文明"]}
+    ]
+  },
+  {
+    "id": "C25-S07",
+    "category": "標準答案題",
+    "question": "古箏行動主要使用哪種材料或工具來切割審判日號？",
+    "standard_answer": "使用飛刃奈米絲 / 納米絲。",
+    "lenient_criteria": [
+      {"label": "提到飛刃、奈米絲或納米絲", "weight": 3, "aliases": ["飛刃", "奈米絲", "納米絲", "纳米丝"]},
+      {"label": "提到切割審判日號或船體", "weight": 2, "aliases": ["切割", "割裂", "審判日", "船"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答飛刃納米材料或納米絲", "weight": 3, "aliases": ["飛刃", "納米絲", "奈米絲"]},
+      {"label": "明確說用來切割審判日號", "weight": 2, "aliases": ["切割審判日", "切割船", "審判日號"]}
+    ]
+  },
+  {
+    "id": "C25-S08",
+    "category": "標準答案題",
+    "question": "智子是由什麼粒子改造成的？",
+    "standard_answer": "質子。",
+    "lenient_criteria": [
+      {"label": "回答質子", "weight": 5, "aliases": ["質子", "质子", "proton"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答質子", "weight": 3, "aliases": ["質子"]},
+      {"label": "提到改造或製造成智子", "weight": 2, "aliases": ["改造", "製造", "智子"]}
+    ]
+  },
+  {
+    "id": "C25-S09",
+    "category": "標準答案題",
+    "question": "申玉菲在地球三體組織中，較接近哪一派？",
+    "standard_answer": "拯救派。",
+    "lenient_criteria": [
+      {"label": "回答拯救派或救贖派", "weight": 5, "aliases": ["拯救派", "救贖派"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確回答拯救派", "weight": 3, "aliases": ["拯救派"]},
+      {"label": "不能答成降臨派，且說明她反對降臨派或內心屬拯救派", "weight": 2, "aliases": ["反對降臨派", "內心深處", "堅定的拯救派"]}
+    ]
+  },
+  {
+    "id": "C25-S10",
+    "category": "標準答案題",
+    "question": "三體艦隊出發後，目標大致是哪裡？",
+    "standard_answer": "地球 / 太陽系，距離約四光年。",
+    "lenient_criteria": [
+      {"label": "提到地球或太陽系", "weight": 3, "aliases": ["地球", "太陽系"]},
+      {"label": "提到四光年或數百年航程", "weight": 2, "aliases": ["四光年", "4光年", "四百年", "四五百年"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說目標是地球或太陽系", "weight": 3, "aliases": ["地球", "太陽系"]},
+      {"label": "保留四光年距離", "weight": 2, "aliases": ["四光年", "4光年"]}
+    ]
+  },
+  {
+    "id": "C25-W01",
+    "category": "弱開放題",
+    "question": "葉文潔回覆「到這裏來吧」時，想讓三體文明對人類做什麼？",
+    "standard_answer": "她希望三體文明來到地球，以外部力量介入、改造或拯救她失望的人類文明。",
+    "lenient_criteria": [
+      {"label": "提到邀請三體文明來地球", "weight": 2, "aliases": ["到這裏來", "來到地球", "來地球", "三體文明"]},
+      {"label": "提到外部力量介入、改造或拯救人類", "weight": 2, "aliases": ["外部", "介入", "改造", "拯救", "幫助"]},
+      {"label": "提到她對人類失望", "weight": 1, "aliases": ["失望", "絕望", "人類", "邪惡"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說邀請三體文明降臨地球", "weight": 2, "aliases": ["三體文明來到地球", "到這裏來吧", "來地球"]},
+      {"label": "明確說用外部文明改造或拯救人類", "weight": 2, "aliases": ["外部文明", "改造人類", "拯救人類"]},
+      {"label": "把原因連到她對人類文明失望", "weight": 1, "aliases": ["對人類失望", "人類之惡", "人類文明失望"]}
+    ]
+  },
+  {
+    "id": "C25-W02",
+    "category": "弱開放題",
+    "question": "楊冬遺書中「物理學從來就沒有存在過」這句話，對汪淼和丁儀意味著什麼？",
+    "standard_answer": "它意味著基礎物理與科學信念崩潰，讓他們感到支撐世界的規律不存在或失效。",
+    "lenient_criteria": [
+      {"label": "提到物理學不存在或從未存在", "weight": 2, "aliases": ["物理學從來", "物理學不存在", "沒有存在過", "不存在"]},
+      {"label": "提到基礎物理或科學信念崩潰", "weight": 2, "aliases": ["基礎物理", "科學", "信念", "崩潰", "失效"]},
+      {"label": "提到楊冬遺書或汪淼丁儀受到震撼", "weight": 1, "aliases": ["楊冬", "遺書", "汪淼", "丁儀", "震撼"]}
+    ],
+    "strict_criteria": [
+      {"label": "保留原句核心：物理學從來就沒有存在過", "weight": 2, "aliases": ["物理學從來就沒有存在過", "物理學從來沒有存在過"]},
+      {"label": "說明基礎科學或物理信念崩潰", "weight": 2, "aliases": ["基礎物理", "信念崩潰", "科學信念"]},
+      {"label": "連到汪淼和丁儀的震撼或絕望", "weight": 1, "aliases": ["汪淼", "丁儀", "震撼", "絕望"]}
+    ]
+  },
+  {
+    "id": "C25-W03",
+    "category": "弱開放題",
+    "question": "申玉菲為什麼一直要求魏成繼續研究三體問題？",
+    "standard_answer": "因為她相信解開三體問題能幫助三體世界預測太陽運行，關係到三體文明的生存命運。",
+    "lenient_criteria": [
+      {"label": "提到申玉菲與魏成", "weight": 1, "aliases": ["申玉菲", "魏成"]},
+      {"label": "提到研究三體問題或尋找規律", "weight": 2, "aliases": ["三體問題", "規律", "研究", "預測"]},
+      {"label": "提到三體文明生存或命運", "weight": 2, "aliases": ["三體文明", "三體世界", "生存", "命運"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說要解三體問題或預測太陽運行", "weight": 2, "aliases": ["解開三體問題", "預測太陽", "太陽運行"]},
+      {"label": "明確連到三體世界生存", "weight": 2, "aliases": ["三體世界", "生存", "命運"]},
+      {"label": "保留申玉菲要求魏成繼續研究", "weight": 1, "aliases": ["申玉菲", "魏成", "繼續研究"]}
+    ]
+  },
+  {
+    "id": "C25-W04",
+    "category": "弱開放題",
+    "question": "三體文明為什麼需要尋找新的生存世界？",
+    "standard_answer": "因為三體星系受三顆太陽影響極不穩定，文明反覆面臨毀滅危機，所以必須尋找可移民的新世界。",
+    "lenient_criteria": [
+      {"label": "提到三顆太陽或三體星系不穩定", "weight": 2, "aliases": ["三顆太陽", "三個太陽", "不穩定", "三體星系"]},
+      {"label": "提到文明毀滅或生存危機", "weight": 2, "aliases": ["毀滅", "滅亡", "危機", "生存"]},
+      {"label": "提到新世界、移民或地球", "weight": 1, "aliases": ["新世界", "移民", "地球", "太陽系"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說三體星系因三顆太陽不穩定", "weight": 2, "aliases": ["三顆太陽", "不穩定", "三體星系"]},
+      {"label": "明確說文明面臨反覆毀滅或生存危機", "weight": 2, "aliases": ["毀滅", "生存危機", "滅亡"]},
+      {"label": "明確說因此尋找可移民的新世界", "weight": 1, "aliases": ["移民", "新世界", "新的家園"]}
+    ]
+  },
+  {
+    "id": "C25-W05",
+    "category": "弱開放題",
+    "question": "地球三體組織中的拯救派希望三體文明帶來什麼？",
+    "standard_answer": "拯救派把三體文明當成神，希望它改造、拯救或提升人類文明。",
+    "lenient_criteria": [
+      {"label": "提到拯救派", "weight": 1, "aliases": ["拯救派", "救贖派"]},
+      {"label": "提到改造、拯救或提升人類", "weight": 2, "aliases": ["改造", "拯救", "提升", "幫助"]},
+      {"label": "提到三體文明被當成神或主", "weight": 2, "aliases": ["三體文明", "神", "主", "崇拜"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說拯救派", "weight": 1, "aliases": ["拯救派"]},
+      {"label": "明確說希望三體文明改造或拯救人類", "weight": 3, "aliases": ["改造人類", "拯救人類", "改造人類文明"]},
+      {"label": "提到宗教式崇拜或把三體當主", "weight": 1, "aliases": ["神", "主", "崇拜"]}
+    ]
+  },
+  {
+    "id": "C25-W06",
+    "category": "弱開放題",
+    "question": "審判日號上藏有什麼對人類很重要的資料？",
+    "standard_answer": "它藏有地球三體組織與三體文明通訊、紅岸與 ETO 相關的重要資料。",
+    "lenient_criteria": [
+      {"label": "提到審判日號或船", "weight": 1, "aliases": ["審判日", "船"]},
+      {"label": "提到地球三體組織或 ETO 資料", "weight": 2, "aliases": ["地球三體組織", "ETO", "三體組織", "資料"]},
+      {"label": "提到三體文明通訊或紅岸資料", "weight": 2, "aliases": ["通訊", "三體文明", "紅岸", "信息", "訊息"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說審判日號", "weight": 1, "aliases": ["審判日號"]},
+      {"label": "明確說 ETO 或地球三體組織資料", "weight": 2, "aliases": ["ETO", "地球三體組織"]},
+      {"label": "明確說與三體文明通訊或紅岸訊息有關", "weight": 2, "aliases": ["通訊", "三體文明", "紅岸"]}
+    ]
+  },
+  {
+    "id": "C25-W07",
+    "category": "弱開放題",
+    "question": "三體元首如何處置發出警告的 1379 號監聽員？",
+    "standard_answer": "元首認定他有罪、是最大的罪犯，但給他自由，讓他活到看到地球失去希望。",
+    "lenient_criteria": [
+      {"label": "提到 1379 號監聽員或警告", "weight": 1, "aliases": ["1379", "監聽員", "警告"]},
+      {"label": "提到有罪或最大罪犯", "weight": 2, "aliases": ["有罪", "罪犯", "最大罪犯"]},
+      {"label": "提到自由或活到失去希望", "weight": 2, "aliases": ["自由", "活到", "失去希望", "懲罰"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說 1379 號監聽員", "weight": 1, "aliases": ["1379", "監聽員"]},
+      {"label": "明確說元首認定他有罪或最大罪犯", "weight": 2, "aliases": ["有罪", "最大罪犯"]},
+      {"label": "明確保留自由與活到失去希望的處置", "weight": 2, "aliases": ["你自由了", "自由", "活到", "失去一切希望"]}
+    ]
+  },
+  {
+    "id": "C25-W08",
+    "category": "弱開放題",
+    "question": "第一部結尾「你們是蟲子」這句話，對人類代表什麼打擊？",
+    "standard_answer": "它把人類貶低成弱小蟲子，打擊人類信心、尊嚴與抵抗意志。",
+    "lenient_criteria": [
+      {"label": "提到三體或智子訊息", "weight": 1, "aliases": ["三體", "智子", "訊息", "信息"]},
+      {"label": "提到人類被貶低為蟲子或弱小", "weight": 2, "aliases": ["蟲子", "弱小", "渺小", "貶低"]},
+      {"label": "提到信心、尊嚴或意志受打擊", "weight": 2, "aliases": ["打擊", "信心", "尊嚴", "絕望", "意志"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說這是三體對人類的訊息", "weight": 1, "aliases": ["三體", "訊息", "你們是蟲子"]},
+      {"label": "明確說把人類貶為蟲子或極弱小", "weight": 2, "aliases": ["蟲子", "弱小", "貶低"]},
+      {"label": "明確說打擊信心、尊嚴或抵抗意志", "weight": 2, "aliases": ["信心", "尊嚴", "抵抗", "意志", "打擊"]}
+    ]
+  },
+  {
+    "id": "C25-W09",
+    "category": "弱開放題",
+    "question": "三體文明為什麼要用智子遏制地球基礎科學？",
+    "standard_answer": "因為它害怕地球科技在艦隊抵達前快速進步到能對抗三體文明，所以用智子鎖死人類基礎科學。",
+    "lenient_criteria": [
+      {"label": "提到智子或三體文明", "weight": 1, "aliases": ["智子", "三體"]},
+      {"label": "提到阻礙基礎科學或物理實驗", "weight": 2, "aliases": ["基礎科學", "物理", "加速器", "實驗", "鎖死", "阻礙"]},
+      {"label": "提到害怕地球科技進步後能對抗", "weight": 2, "aliases": ["科技", "進步", "發展", "對抗", "威脅"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說智子鎖死或干擾基礎科學", "weight": 2, "aliases": ["智子", "鎖死", "基礎科學"]},
+      {"label": "明確說害怕地球科技快速進步", "weight": 2, "aliases": ["快速進步", "科技", "發展"]},
+      {"label": "明確連到艦隊抵達前人類可能對抗", "weight": 1, "aliases": ["艦隊", "到達", "對抗"]}
+    ]
+  },
+  {
+    "id": "C25-W10",
+    "category": "弱開放題",
+    "question": "古箏行動的核心做法是什麼？",
+    "standard_answer": "在巴拿馬運河兩岸架設飛刃納米絲，讓審判日號通過時被細絲切割，以取得船上的資料。",
+    "lenient_criteria": [
+      {"label": "提到古箏行動或審判日號", "weight": 1, "aliases": ["古箏行動", "古箏", "審判日"]},
+      {"label": "提到飛刃、納米絲或奈米絲", "weight": 2, "aliases": ["飛刃", "納米絲", "奈米絲"]},
+      {"label": "提到切割船體並取得資料", "weight": 2, "aliases": ["切割", "割裂", "資料", "信息", "取得"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說在運河兩岸布設納米絲或飛刃", "weight": 2, "aliases": ["運河", "納米絲", "飛刃"]},
+      {"label": "明確說切割審判日號", "weight": 2, "aliases": ["切割", "審判日號"]},
+      {"label": "明確說目的是取得資料或信息", "weight": 1, "aliases": ["資料", "信息", "取得"]}
+    ]
+  },
+  {
+    "id": "C25-O01",
+    "category": "純開放題",
+    "question": "只根據第一集內容，葉文潔背叛人類的心理因素可以如何概括？",
+    "standard_answer": "她經歷文革與人類之惡後，對人類文明失望，轉而相信需要人類之外的力量介入或改造人類。",
+    "lenient_criteria": [
+      {"label": "提到文革、迫害或人類之惡", "weight": 2, "aliases": ["文革", "迫害", "人類之惡", "邪惡"]},
+      {"label": "提到對人類文明失望", "weight": 2, "aliases": ["失望", "絕望", "人類文明"]},
+      {"label": "提到人類之外力量介入或改造", "weight": 1, "aliases": ["外部力量", "人類之外", "介入", "改造"]}
+    ],
+    "strict_criteria": [
+      {"label": "把文革創傷或人類之惡作為心理根源", "weight": 2, "aliases": ["文革", "人類之惡", "迫害"]},
+      {"label": "明確說她對人類文明失望", "weight": 2, "aliases": ["對人類失望", "人類文明失望", "失望"]},
+      {"label": "明確說因此轉向外部文明或外部力量", "weight": 1, "aliases": ["外部文明", "外部力量", "人類之外"]}
+    ]
+  },
+  {
+    "id": "C25-O02",
+    "category": "純開放題",
+    "question": "三體遊戲如何讓玩家理解三體文明的生存困境？",
+    "standard_answer": "它用亂紀元、恆紀元、三日凌空、脫水與文明反覆毀滅等體驗，讓玩家理解三體世界的不穩定與生存危機。",
+    "lenient_criteria": [
+      {"label": "提到亂紀元或恆紀元", "weight": 2, "aliases": ["亂紀元", "恆紀元"]},
+      {"label": "提到三日凌空、脫水或天文災難", "weight": 2, "aliases": ["三日凌空", "脫水", "太陽", "災難"]},
+      {"label": "提到文明反覆毀滅或生存困境", "weight": 1, "aliases": ["文明", "毀滅", "生存", "困境"]}
+    ],
+    "strict_criteria": [
+      {"label": "同時提到亂紀元或恆紀元的環境設定", "weight": 2, "aliases": ["亂紀元", "恆紀元"]},
+      {"label": "提到三日凌空或脫水這類具體體驗", "weight": 2, "aliases": ["三日凌空", "脫水"]},
+      {"label": "明確說這使玩家理解三體文明生存危機", "weight": 1, "aliases": ["生存危機", "生存困境", "三體文明"]}
+    ]
+  },
+  {
+    "id": "C25-O03",
+    "category": "純開放題",
+    "question": "第一集中，地球三體組織內部派別衝突的核心差異是什麼？",
+    "standard_answer": "降臨派希望三體降臨並毀滅或懲罰人類，拯救派把三體文明當成神並希望它改造人類，兩者目標不同並互相衝突。",
+    "lenient_criteria": [
+      {"label": "提到降臨派目標是降臨、懲罰或毀滅人類", "weight": 2, "aliases": ["降臨派", "毀滅", "懲罰", "消滅人類"]},
+      {"label": "提到拯救派希望三體改造或拯救人類", "weight": 2, "aliases": ["拯救派", "改造", "拯救", "神"]},
+      {"label": "提到派別衝突或目標不同", "weight": 1, "aliases": ["衝突", "矛盾", "不同", "派別"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確區分降臨派與拯救派", "weight": 1, "aliases": ["降臨派", "拯救派"]},
+      {"label": "明確說降臨派要毀滅或懲罰人類", "weight": 2, "aliases": ["毀滅人類", "懲罰人類", "消滅人類"]},
+      {"label": "明確說拯救派要三體改造或拯救人類", "weight": 2, "aliases": ["改造人類", "拯救人類", "三體文明"]}
+    ]
+  },
+  {
+    "id": "C25-O04",
+    "category": "純開放題",
+    "question": "大史在結尾帶汪淼和丁儀看蝗蟲，想傳達什麼意思？",
+    "standard_answer": "他想讓他們看到，蟲子雖弱卻從未被真正戰勝，人類即使被三體看成蟲子，也不代表沒有抵抗與生存希望。",
+    "lenient_criteria": [
+      {"label": "提到蝗蟲或蟲子", "weight": 1, "aliases": ["蝗蟲", "蟲子"]},
+      {"label": "提到弱小但沒有被真正消滅或戰勝", "weight": 2, "aliases": ["沒有被真正戰勝", "沒有被滅絕", "弱小", "戰勝"]},
+      {"label": "提到恢復人類信心、抵抗或希望", "weight": 2, "aliases": ["信心", "希望", "抵抗", "振作"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說大史用蝗蟲比喻人類", "weight": 1, "aliases": ["蝗蟲", "人類"]},
+      {"label": "明確說蟲子從未被真正戰勝", "weight": 2, "aliases": ["蟲子從來就沒有被真正戰勝過", "沒有被真正戰勝"]},
+      {"label": "明確說藉此恢復汪淼和丁儀的希望或抵抗意志", "weight": 2, "aliases": ["汪淼", "丁儀", "希望", "抵抗", "振作"]}
+    ]
+  },
+  {
+    "id": "C25-O05",
+    "category": "純開放題",
+    "question": "智子對人類的威脅，為什麼不只是監視？",
+    "standard_answer": "智子不只監視人類，還能干擾高能物理實驗、破壞基礎科學進展，並以訊息造成心理威懾。",
+    "lenient_criteria": [
+      {"label": "提到智子監視或觀察", "weight": 1, "aliases": ["監視", "觀察", "智子"]},
+      {"label": "提到干擾高能物理或粒子加速器實驗", "weight": 2, "aliases": ["高能", "粒子", "加速器", "實驗", "干擾"]},
+      {"label": "提到破壞基礎科學或心理威懾", "weight": 2, "aliases": ["基礎科學", "鎖死", "破壞", "威懾", "你們是蟲子"]}
+    ],
+    "strict_criteria": [
+      {"label": "明確說智子不只監視", "weight": 1, "aliases": ["不只監視", "不只是監視", "監視"]},
+      {"label": "明確說智子干擾粒子加速器或高能物理實驗", "weight": 2, "aliases": ["粒子加速器", "高能物理", "實驗"]},
+      {"label": "明確說它鎖死或破壞人類基礎科學", "weight": 2, "aliases": ["鎖死", "基礎科學", "破壞"]}
+    ]
+  }
+]

@@ -97,25 +97,20 @@ python3 -m unittest discover -s tests
 
 | 指標 | 代表意思 |
 | --- | --- |
-| QA 語意評分 | 評估 QA Agent 最後回答是否語意正確；同義詞、簡稱、等價表達都算對。 |
-| Retrieval Upper Bound | 不看 LLM 回答，只看 retrieved contexts 是否包含標準答案所需 evidence。 |
-| Top5 Evidence Estimate | 估算 Top 5 retrieved chunks 是否足以支撐標準答案。 |
-| Retrieval Ceiling | 用 criteria / alias rule 計算 retrieval 理論最高可得分，用來判斷問題是否出在 retrieval。 |
-| 弱開放題 Upper Bound | 針對過去表現不好的開放式題目，重新測目前架構的 retrieval 上限。 |
-| Unit tests | 程式層級測試，確認 ingestion、retrieval、graph、query pipeline 等功能沒有破壞。 |
+| QA 語意評分（寬鬆） | 評估 LLM 最終回答是否語意正確；同義詞、簡稱、等價表達都算對。 |
+| QA 語意評分（嚴謹） | 評估 LLM 是否保留標準答案中的關鍵詞、因果、限制條件或核心表述。 |
+| Retrieval Upper Bound | 不看 LLM 回答，只看 Top 8 Context 是否包含標準答案所需 evidence。 |
 
-### 結果摘要
+### Current25 V2 評測
 
-| 評測 | 目的 | 結果 |
-| --- | --- | ---: |
-| First20 封閉題 QA 語意評分 | 測 QA Agent 最終回答品質 | `85 / 100` |
-| First20 Retrieval Upper Bound | 測封閉題 retrieval 是否找到完整 evidence | `100 / 100` |
-| Direct30 hybrid rerank 最終回答分數 | 測開放題 QA Agent 回答品質 | `124 / 150 = 82.7%` |
-| Direct30 hybrid rerank Top5 Evidence Estimate | 測開放題 Top5 chunks evidence 覆蓋率 | `140 / 150 = 93.3%` |
-| Direct30 diagnosis Retrieval Ceiling | 診斷 retrieval 理論上限 | `77 / 90 = 85.6%` |
-| 弱開放題 current 5pt Upper Bound | 測過去弱題在目前架構下的 retrieval 上限 | `56 / 60 = 93.3%` |
-| 弱開放題 current 3pt Ceiling | 用 3 criteria 口徑和舊版比較 | `34 / 36 = 94.4%` |
-| Unit tests | 確認程式功能正常 | `149 tests OK` |
+這組評測只保留 25 題：10 題標準答案題、10 題弱開放題、5 題純開放題。評分包含 LLM 最終回答與 Retrieval Upper Bound。
+
+| 題型 | 題數 | QA 寬鬆 | QA 嚴謹 | Retrieval Upper Bound |
+| --- | ---: | ---: | ---: | ---: |
+| 標準答案題 | 10 | `38 / 50` | `41 / 50` | `47 / 50` |
+| 弱開放題 | 10 | `36 / 50` | `25 / 50` | `50 / 50` |
+| 純開放題 | 5 | `10 / 25` | `8 / 25` | `25 / 25` |
+| 合計 | 25 | `84 / 125 = 67.2%` | `74 / 125 = 59.2%` | `122 / 125 = 97.6%` |
 
 評測檔案與模擬問答輸出：
 

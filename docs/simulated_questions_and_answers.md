@@ -1,46 +1,20 @@
 # Simulated Questions and Answers
 
-本文件整理目前已推上 GitHub 的模擬問題、QA Agent 回答、評分報告與 retrieval upper-bound 報告。README 只保留連結，不展開這些大型 raw / report 內容。
+本文件只保留目前 README 對應的 Current25 V2 評測檔案。README 只顯示 workflow、使用方式與測試結果摘要；完整題目、LLM 回答與逐題評分放在這裡連結。
 
-## Closed Questions
-
-| File | Description |
-| --- | --- |
-| [questions_first20_closed_20260615.json](../evals/three_body_qwen/questions_first20_closed_20260615.json) | 第一集封閉式 20 題題庫 |
-| [first20_closed_raw_answers_20260615-104328.jsonl](../evals/three_body_qwen/first20_closed_raw_answers_20260615-104328.jsonl) | First20 QA Agent 原始回答 |
-| [first20_closed_scored_report_20260615-112525_final.md](../evals/three_body_qwen/first20_closed_scored_report_20260615-112525_final.md) | First20 deterministic scored report |
-| [first20_closed_semantic_rescore_20260615.md](../evals/three_body_qwen/first20_closed_semantic_rescore_20260615.md) | First20 語意寬鬆重評報告 |
-| [first20_retrieval_upper_bound_report_20260615-162647.md](../evals/three_body_qwen/first20_retrieval_upper_bound_report_20260615-162647.md) | First20 retrieval upper-bound 最終報告 |
-
-## Open Questions
+## Current25 V2 Evaluation
 
 | File | Description |
 | --- | --- |
-| [questions_direct30_lenient_20260615.json](../evals/three_body_qwen/questions_direct30_lenient_20260615.json) | 第一集開放式 Direct30 題庫 |
-| [three_agent_direct30_hybrid_rerank_raw_answers_20260615-011430.jsonl](../evals/three_body_qwen/three_agent_direct30_hybrid_rerank_raw_answers_20260615-011430.jsonl) | Direct30 hybrid rerank 原始回答 |
-| [three_agent_direct30_hybrid_rerank_scored_report_20260615-011430.md](../evals/three_body_qwen/three_agent_direct30_hybrid_rerank_scored_report_20260615-011430.md) | Direct30 hybrid rerank QA scored report |
-| [direct30_retrieval_mode_comparison_with_hybrid_20260615-011430.md](../evals/three_body_qwen/direct30_retrieval_mode_comparison_with_hybrid_20260615-011430.md) | embedding / keyword-only / hybrid rerank 比較 |
-| [direct30_failure_cause_diagnosis_20260615-074407.md](../evals/three_body_qwen/direct30_failure_cause_diagnosis_20260615-074407.md) | Retrieval vs QA failure diagnosis |
-| [direct30_bad_open_retrieval_upper_bound_report_20260616-011403.md](../evals/three_body_qwen/direct30_bad_open_retrieval_upper_bound_report_20260616-011403.md) | 弱開放題 current V2 retrieval upper-bound 報告 |
-
-## Raw Context Records
-
-以下檔案包含完整 retrieved context、QA output 或 scoring trace，適合 debug，不適合放進 README：
-
-```text
-evals/three_body_qwen/*raw_answers*.jsonl
-evals/three_body_qwen/*retrieval_upper_bound_raw*.jsonl
-evals/three_body_qwen/*scored_report*.md
-```
+| [questions_current25_v2_20260616.json](../evals/three_body_qwen/questions_current25_v2_20260616.json) | 第一集 Current25 題庫：10 題標準答案題、10 題弱開放題、5 題純開放題 |
+| [current25_v2_raw_answers_20260616-100016.jsonl](../evals/three_body_qwen/current25_v2_raw_answers_20260616-100016.jsonl) | LLM 原始回答、retrieved contexts 與 scoring trace |
+| [current25_v2_scored_report_20260616-100016.md](../evals/three_body_qwen/current25_v2_scored_report_20260616-100016.md) | Current25 寬鬆 QA、嚴謹 QA 與 Retrieval Upper Bound 詳細報告 |
 
 ## Evaluation Summary
 
-| Evaluation | Result |
-| --- | ---: |
-| First20 closed semantic score | `85 / 100` |
-| First20 retrieval upper bound | `100 / 100` |
-| Direct30 hybrid rerank final answer score | `124 / 150 = 82.7%` |
-| Direct30 hybrid rerank Top5 evidence estimate | `140 / 150 = 93.3%` |
-| Direct30 diagnosis retrieval ceiling | `77 / 90 = 85.6%` |
-| Bad open-question current 5pt upper bound | `56 / 60 = 93.3%` |
-| Bad open-question current 3pt ceiling | `34 / 36 = 94.4%` |
+| 題型 | 題數 | QA 寬鬆 | QA 嚴謹 | Retrieval Upper Bound |
+| --- | ---: | ---: | ---: | ---: |
+| 標準答案題 | 10 | `38 / 50` | `41 / 50` | `47 / 50` |
+| 弱開放題 | 10 | `36 / 50` | `25 / 50` | `50 / 50` |
+| 純開放題 | 5 | `10 / 25` | `8 / 25` | `25 / 25` |
+| 合計 | 25 | `84 / 125 = 67.2%` | `74 / 125 = 59.2%` | `122 / 125 = 97.6%` |
