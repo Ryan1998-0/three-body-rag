@@ -111,7 +111,7 @@ http://127.0.0.1:8766
 
 | 測試集 | 題數 | 評估項目 | 結果 | 題庫 | 報告 |
 | --- | ---: | --- | ---: | --- | --- |
-| 三體三部曲 Reader 300 | 300 | Retrieval Upper Bound | `1480 / 1500 = 98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
+| 三體三部曲 Reader 300 | 300 | Retrieval Upper Bound | `98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
 
 ## Knowledge Base 設定
 
