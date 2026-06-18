@@ -1,21 +1,23 @@
-# Three Body RAG
+# RAG Project
 
-這是一個 Retrieval-first 的 RAG 專案，用來測試與優化 V2 檢索架構。核心技術包含 BM25、Dense Retrieval、RRF、Reranker、Parent Chunk Expansion 與 Graph Retrieval。
+Retrieval-first RAG 架構範例。核心目標是把檢索流程拆清楚，讓 knowledge base 可以替換，而不是把特定資料集寫死在程式裡。
 
-## 工作流
+## Workflow
 
 ```text
-問題
+Question
 ↓
-查詢改寫（Query Rewrite）
-↓
-實體抽取（Entity Extraction）
+Query Rewrite
 ↓
 Metadata Filter
 ↓
-問題分類器（Query Classifier）
+Entity Extraction
 ↓
-Graph Retrieval + BM25（原始問題）+ Dense（原始問題）
+Query Classifier
+↓
+Graph Retrieval + BM25(original question) + Dense(original question)
+↓
+RRF Merge
 ↓
 Graph / Vector Merge
 ↓
@@ -28,26 +30,28 @@ Top 8 Context
 LLM / QA Agent
 ```
 
-## 架構重點
+架構定義在 `rag_demo/rag_architecture.py`。
 
-- BM25 和 Dense Retrieval 都使用原始問題。
-- Query Rewrite 只作為輔助訊號，不取代原始問題。
-- Graph Retrieval 用來補強人物、組織、派別、事件與多跳問題的關係證據。
-- Graph 結果會先轉回 supporting chunks，再和 vector candidates 合併。
-- RRF 用來合併 BM25 與 Dense 的 ranked lists。
-- Reranker 會重排合併後的候選 chunks。
-- Parent Chunk Expansion 會補同一段落附近的 chunks。
-- 最後使用 Top 8 Context 交給 LLM / QA Agent 回答。
+## Node 功能
 
-每一步詳細說明：
+| Node | 功能 |
+| --- | --- |
+| Question | 保留使用者原始問題，避免專名在改寫時遺失。 |
+| Query Rewrite | 產生輔助查詢，不取代原始問題。 |
+| Metadata Filter | 依文件、章節、類型等 metadata 縮小搜尋空間。 |
+| Entity Extraction | 抽取人物、組織、地點、事件與概念。 |
+| Query Classifier | 判斷 Content / Relation / Hybrid 問題。 |
+| Graph Retrieval | 處理人物關係、組織關係與多跳查詢。 |
+| BM25 | 用原始問題做關鍵字檢索，補強專名與精確詞。 |
+| Dense Retrieval | 用原始問題做語意檢索，補強同義與長句查詢。 |
+| RRF Merge | 合併 BM25 與 Dense 排名，提高 recall。 |
+| Graph / Vector Merge | 合併 graph context 與 vector candidates 並去重。 |
+| Reranker | 重排候選 chunks，提高 precision。 |
+| Parent Chunk Expansion | 補回相鄰 chunks，避免答案被 chunk 邊界切斷。 |
+| Top 8 Context | 控制交給 LLM 的 context 數量。 |
+| LLM / QA Agent | 只根據檢索內容回答。 |
 
-- [V2 Retrieval Workflow Steps](docs/v2_workflow_steps.md)
-
-GraphRAG 增量優化路線：
-
-- [GraphRAG Incremental Upgrade Roadmap](docs/graphrag_incremental_roadmap.md)
-
-## 如何使用
+## 使用方法
 
 安裝依賴：
 
@@ -55,22 +59,40 @@ GraphRAG 增量優化路線：
 python3 -m pip install -r requirements.txt
 ```
 
-從 `data/raw/*` 建立 index：
+建立 knowledge base profile：
+
+```text
+profiles/<profile_name>/
+  raw/
+  index/
+  entities/aliases.json
+  graph/graph.json
+```
+
+將文件放入：
+
+```text
+profiles/<profile_name>/raw/
+```
+
+建立 index：
 
 ```bash
+export RAG_PROFILE=<profile_name>
 python3 -m rag_demo.ingest
 ```
 
 提問：
 
 ```bash
-python3 -m rag_demo.query '申玉菲在地球三體組織中屬於哪一派？'
+export RAG_PROFILE=<profile_name>
+python3 -m rag_demo.query '你的問題'
 ```
 
 指定模型：
 
 ```bash
-python3 -m rag_demo.query '古箏行動的核心做法是什麼？' --model ollama:qwen2.5:7b
+python3 -m rag_demo.query '你的問題' --model ollama:qwen2.5:7b
 ```
 
 啟動本機網站：
@@ -85,47 +107,39 @@ python3 -m rag_demo.web_app --port 8766
 http://127.0.0.1:8766
 ```
 
-執行測試：
-
-```bash
-python3 -m unittest discover -s tests
-```
-
 ## 測試結果
 
-### 指標說明
+| 測試集 | 題數 | 題型 | 評估項目 | 結果 | 題庫 | 報告 |
+| --- | ---: | --- | --- | ---: | --- | --- |
+| 三體三部曲 Reader 300 | 300 | 簡單題 | Retrieval Upper Bound | `1480 / 1500 = 98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
+| GitHub Current25 V2 | 25 | 標準答案題 / 弱開放題 / 純開放題 | Retrieval Upper Bound | `122 / 125 = 97.6%` | [JSON](evals/three_body_qwen/questions_current25_v2_20260616.json) | [Report](evals/three_body_qwen/github_current25_retrieval_upper_bound_report_20260618-120454.md) |
 
-| 指標 | 代表意思 |
-| --- | --- |
-| QA 語意評分（寬鬆） | 評估 LLM 最終回答是否語意正確；同義詞、簡稱、等價表達都算對。 |
-| QA 語意評分（嚴謹） | 評估 LLM 是否保留標準答案中的關鍵詞、因果、限制條件或核心表述。 |
-| Retrieval Upper Bound | 不看 LLM 回答，只看 Top 8 Context 是否包含標準答案所需 evidence。 |
+## Knowledge Base 設定
 
-### Current25 V2 評測
-
-這組評測只保留 25 題：10 題標準答案題、10 題弱開放題、5 題純開放題。評分包含 LLM 最終回答與 Retrieval Upper Bound。
-
-| 題型 | 題數 | QA 寬鬆 | QA 嚴謹 | Retrieval Upper Bound |
-| --- | ---: | ---: | ---: | ---: |
-| 標準答案題 | 10 | `38 / 50` | `41 / 50` | `47 / 50` |
-| 弱開放題 | 10 | `36 / 50` | `25 / 50` | `50 / 50` |
-| 純開放題 | 5 | `10 / 25` | `8 / 25` | `25 / 25` |
-| 合計 | 25 | `84 / 125 = 67.2%` | `74 / 125 = 59.2%` | `122 / 125 = 97.6%` |
-
-評測檔案與模擬問答輸出：
-
-- [Simulated Questions and Answers](docs/simulated_questions_and_answers.md)
-
-## 模型 Provider
-
-支援的 model spec 範例：
+`RAG_PROFILE` 會自動讀取：
 
 ```text
-ollama:qwen2.5:7b
-ollama:llama3.1:8b
-ollama:gemma3:4b
-openai:gpt-5.5
-anthropic:claude-opus-4-1-20250805
+profiles/<profile_name>/raw/
+profiles/<profile_name>/index/
+profiles/<profile_name>/entities/aliases.json
+profiles/<profile_name>/graph/graph.json
 ```
 
-Model provider 控制的是 LLM / Agent 使用的模型。如果更換 embedding model，需要重新執行 `rag_demo.ingest` 建立新的 index。
+也可以用環境變數覆蓋：
+
+```bash
+export RAG_KB_DIR=/path/to/raw
+export RAG_INDEX_DIR=/path/to/index
+export RAG_ENTITY_ALIASES=/path/to/aliases.json
+export RAG_GRAPH_PATH=/path/to/graph.json
+```
+
+詳細設定見 `docs/knowledge_base_interface.md`。
+
+## 原則
+
+- BM25 與 Dense 使用原始問題。
+- Query Rewrite 只作為輔助訊號。
+- Retrieval 先求 recall，再用 reranker 提升 precision。
+- Graph 只補關係型與多跳問題，不重寫整套 RAG。
+- Knowledge base 透過 profile 切換，核心程式不綁定特定資料集。
