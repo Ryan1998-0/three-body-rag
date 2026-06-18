@@ -109,10 +109,9 @@ http://127.0.0.1:8766
 
 ## 測試結果
 
-| 測試集 | 題數 | 題型 | 評估項目 | 結果 | 題庫 | 報告 |
-| --- | ---: | --- | --- | ---: | --- | --- |
-| 三體三部曲 Reader 300 | 300 | 簡單題 | Retrieval Upper Bound | `1480 / 1500 = 98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
-| GitHub Current25 V2 | 25 | 標準答案題 / 弱開放題 / 純開放題 | Retrieval Upper Bound | `122 / 125 = 97.6%` | [JSON](evals/three_body_qwen/questions_current25_v2_20260616.json) | [Report](evals/three_body_qwen/github_current25_retrieval_upper_bound_report_20260618-120454.md) |
+| 測試集 | 題數 | 評估項目 | 結果 | 題庫 | 報告 |
+| --- | ---: | --- | ---: | --- | --- |
+| 三體三部曲 Reader 300 | 300 | Retrieval Upper Bound | `1480 / 1500 = 98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
 
 ## Knowledge Base 設定
 
