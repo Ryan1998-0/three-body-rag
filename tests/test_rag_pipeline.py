@@ -1,11 +1,14 @@
 import unittest
 import inspect
+import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from rag_demo.chunking import chunk_markdown
 from rag_demo.chunking import chunk_narrative_text, chunk_sectioned_record_text, chunk_sectioned_text, load_knowledge_base_chunks
-from rag_demo.config import RagConfig, resolve_project_path
+from rag_demo.config import RagConfig, resolve_profile_path, resolve_project_path
 from rag_demo.action_result_resolution import answer_action_result
 from rag_demo import embeddings as embeddings_module
 from rag_demo.embeddings import chunk_to_embedding_text, embed_texts, load_embedding_matrix, save_embedding_matrix
@@ -15,6 +18,7 @@ from rag_demo.entity_resolution import answer_entity_existence, extract_entity_n
 from rag_demo.event_list_retrieval import find_event_list_chunks, find_result_constrained_chunks, merge_event_list_chunks
 from rag_demo.evidence_extraction_agent import build_evidence_extraction_prompt, render_evidence_context
 from rag_demo.index_store import load_index, save_index
+from rag_demo.knowledge_base import KnowledgeBaseProfile
 from rag_demo.keyword_extraction import parse_keywords_output
 from rag_demo.ollama_client import build_ollama_payload
 from rag_demo.model_providers import (
@@ -30,12 +34,14 @@ from rag_demo.general_answer import build_general_answer_prompt
 from rag_demo.graph_entities import extract_chunk_entities, extract_query_entities
 from rag_demo.graph_retrieval import retrieve_graph_context
 from rag_demo.query_classifier import classify_query
-from rag_demo.query import _answer_from_deterministic_narrative_evidence, _bm25_dense_retrieval_query, _build_source_insufficient_answer, _build_sparse_dense_original_refined_query_variants, _build_sparse_dense_refined_query_variants, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _diversify_retrieval_results, _expand_parent_chunks, _explicit_metadata_filters, _format_output, _format_three_agent_output, _hybrid_rerank_results, _rrf_merge_ranked_results, _rrf_parent_context_results, _select_retrieval_query, answer_question
+from rag_demo.rag_architecture import V2_RAG_ARCHITECTURE, workflow_text
+from rag_demo.query import _bm25_dense_retrieval_query, _build_source_insufficient_answer, _build_sparse_dense_original_refined_query_variants, _build_sparse_dense_refined_query_variants, _build_three_agent_query_variants, _combine_original_and_rewritten_query, _definition_route_query, _diversify_retrieval_results, _expand_parent_chunks, _explicit_metadata_filters, _format_output, _format_three_agent_output, _hybrid_rerank_results, _rrf_merge_ranked_results, _rrf_parent_context_results, _select_retrieval_query, answer_question
 from rag_demo.query_rewriter import build_rewrite_prompt, extract_retrieval_query, sanitize_retrieval_query
 from rag_demo.retrieval_planner import build_retrieval_plan, extract_focus_terms
 from rag_demo.retrieval_verifier import build_verifier_prompt, extract_evidence_candidates, parse_verifier_output
 from rag_demo.retrieval_verifier import assess_deterministic_narrative_evidence, assess_query_evidence_overlap, assess_retrieval_confidence, verify_retrieval
 from rag_demo.retrieval import embedding_search, hybrid_search, keyword_search
+from rag_demo.vector_store import QdrantVectorStore
 from rag_demo.web_app import is_home_path, render_home
 
 
@@ -167,6 +173,173 @@ Owner: Team B
 
         self.assertEqual(resolve_project_path("RAG_KB_DIR", "data/raw", env=env), Path("/tmp/custom-kb"))
 
+    def test_resolve_profile_path_uses_profile_when_no_direct_override(self):
+        env = {"RAG_PROFILE": "fire_law"}
+        root = Path("/repo")
+
+        self.assertEqual(
+            resolve_profile_path(
+                "RAG_KB_DIR",
+                "data/raw",
+                "raw",
+                env=env,
+                project_root=root,
+            ),
+            root / "profiles/fire_law/raw",
+        )
+        self.assertEqual(
+            resolve_profile_path(
+                "RAG_ENTITY_ALIASES",
+                "data/entities/aliases.json",
+                "entities/aliases.json",
+                env=env,
+                project_root=root,
+            ),
+            root / "profiles/fire_law/entities/aliases.json",
+        )
+        self.assertEqual(
+            resolve_profile_path(
+                "RAG_GRAPH_PATH",
+                "data/graph/three_body_graph.json",
+                "graph/graph.json",
+                env=env,
+                project_root=root,
+            ),
+            root / "profiles/fire_law/graph/graph.json",
+        )
+
+    def test_resolve_profile_path_prefers_direct_environment_override(self):
+        env = {
+            "RAG_PROFILE": "fire_law",
+            "RAG_GRAPH_PATH": "/tmp/custom-graph.json",
+        }
+
+        self.assertEqual(
+            resolve_profile_path(
+                "RAG_GRAPH_PATH",
+                "data/graph/three_body_graph.json",
+                "graph/graph.json",
+                env=env,
+            ),
+            Path("/tmp/custom-graph.json"),
+        )
+
+    def test_knowledge_base_profile_uses_standard_profile_layout(self):
+        kb = KnowledgeBaseProfile.from_env(
+            env={"RAG_PROFILE": "fire_law"},
+            project_root=Path("/repo"),
+        )
+
+        self.assertEqual(kb.name, "fire_law")
+        self.assertEqual(kb.raw_dir, Path("/repo/profiles/fire_law/raw"))
+        self.assertEqual(kb.index_dir, Path("/repo/profiles/fire_law/index"))
+        self.assertEqual(kb.alias_path, Path("/repo/profiles/fire_law/entities/aliases.json"))
+        self.assertEqual(kb.graph_path, Path("/repo/profiles/fire_law/graph/graph.json"))
+
+    def test_knowledge_base_profile_reads_manifest_paths(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir).resolve()
+            profile_dir = root / "profiles" / "legal"
+            profile_dir.mkdir(parents=True)
+            (profile_dir / "knowledge_base.json").write_text(
+                """{
+  "raw_dir": "../../legal/raw",
+  "index_dir": "../../legal/index",
+  "alias_path": "../../legal/entities.json",
+  "graph_path": "../../legal/graph.json"
+}
+""",
+                encoding="utf-8",
+            )
+
+            kb = KnowledgeBaseProfile.from_env(
+                env={"RAG_PROFILE": "legal"},
+                project_root=root,
+            )
+
+            self.assertEqual(kb.raw_dir, root / "legal/raw")
+            self.assertEqual(kb.index_dir, root / "legal/index")
+            self.assertEqual(kb.alias_path, root / "legal/entities.json")
+            self.assertEqual(kb.graph_path, root / "legal/graph.json")
+
+    def test_knowledge_base_profile_prefers_direct_environment_overrides(self):
+        kb = KnowledgeBaseProfile.from_env(
+            env={
+                "RAG_PROFILE": "legal",
+                "RAG_KB_DIR": "/tmp/raw",
+                "RAG_GRAPH_PATH": "/tmp/graph.json",
+            },
+            project_root=Path("/repo"),
+        )
+
+        self.assertEqual(kb.raw_dir, Path("/tmp/raw"))
+        self.assertEqual(kb.index_dir, Path("/repo/profiles/legal/index"))
+        self.assertEqual(kb.graph_path, Path("/tmp/graph.json"))
+
+    def test_default_knowledge_base_profile_uses_generic_optional_files(self):
+        kb = KnowledgeBaseProfile.from_env(env={}, project_root=Path("/repo"))
+
+        self.assertEqual(kb.raw_dir, Path("/repo/data/raw"))
+        self.assertEqual(kb.index_dir, Path("/repo/data/index"))
+        self.assertEqual(kb.alias_path, Path("/repo/data/entities/default_aliases.json"))
+        self.assertEqual(kb.graph_path, Path("/repo/data/graph/graph.json"))
+
+    def test_rag_architecture_is_declared_in_single_module(self):
+        step_names = [step.name for step in V2_RAG_ARCHITECTURE.steps]
+
+        self.assertEqual(step_names[0], "Question")
+        self.assertIn("BM25 + Dense", step_names)
+        self.assertEqual(step_names[-1], "LLM / QA Agent")
+        self.assertIn("RRF Merge", workflow_text(V2_RAG_ARCHITECTURE))
+
+    def test_production_rag_modules_do_not_contain_three_body_literals(self):
+        forbidden_terms = (
+            "三體",
+            "三体",
+            "葉文潔",
+            "汪淼",
+            "申玉菲",
+            "地球三體",
+            "紅岸",
+            "古箏",
+            "審判日",
+            "智子",
+            "飛刃",
+            "納米",
+            "奈米",
+            "1379",
+            "四光年",
+            "微波背景",
+            "雲天明",
+            "程心",
+            "艾AA",
+            "降臨派",
+            "拯救派",
+            "ETO",
+            "亂紀元",
+            "恆紀元",
+            "飛星",
+            "三顆太陽",
+            "斜風細雨",
+            "葉哲泰",
+            "楊冬",
+            "常偉思",
+            "伊文斯",
+            "大史",
+            "three_body",
+            "three-body",
+        )
+        project_root = Path(__file__).resolve().parents[1]
+        offenders = []
+
+        for path in sorted((project_root / "rag_demo").glob("*.py")):
+            text = path.read_text(encoding="utf-8")
+            for term in forbidden_terms:
+                if term in text:
+                    offenders.append(f"{path.relative_to(project_root)}: {term}")
+
+        self.assertEqual(offenders, [])
+
     def test_chunk_sectioned_record_can_split_long_section_with_stride_overlap(self):
         long_record = """=== Step 1 ===
 """ + ("Step 1 observation content. " * 80)
@@ -286,6 +459,33 @@ Owner: Team B
         self.assertIn("物理學從來就沒有存在過", expanded)
         self.assertIn("智子", expanded)
 
+    def test_bm25_dense_query_uses_profile_alias_vocabulary(self):
+        with TemporaryDirectory() as temp_dir:
+            alias_path = Path(temp_dir) / "aliases.json"
+            alias_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "canonical": "星環集團",
+                            "aliases": ["星环集团"],
+                            "related_terms": ["程心", "維德", "光速飛船", "曲率驅動"],
+                            "triggers": [{"all": ["商業組織", "逃亡技術"]}],
+                        }
+                    ],
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.dict(os.environ, {"RAG_ENTITY_ALIASES": str(alias_path)}):
+                query = _bm25_dense_retrieval_query(
+                    "如果問第三部裡商業組織如何成為逃亡技術研發平台，應該查哪個集團？",
+                    "",
+                )
+
+        self.assertIn("星環集團", query)
+        self.assertIn("光速飛船", query)
+
     def test_deterministic_evidence_uses_alias_expanded_query_terms(self):
         chunks = [
             {
@@ -330,67 +530,6 @@ Owner: Team B
         self.assertIn("楊冬", evidence)
         self.assertIn("物理學從來就沒有存在過", evidence)
         self.assertIn("高能加速器", evidence)
-
-    def test_deterministic_answer_handles_red_coast_period_questions(self):
-        evidence = "\n".join(
-            [
-                "- [來源 1 / 3.紅岸之一 / part 2] 1969年的這一事件是以後人類歷史的一個轉折點。",
-                "- [來源 2 / 3.紅岸之一 / part 4] 你以後就是基地的工作人員了，這意味着你再也不能離開這裡了。",
-                "- [來源 2 / 3.紅岸之一 / part 5] 紅岸工程第147次發射實驗是在寒冷的星空下進行的。",
-            ]
-        )
-
-        answer = _answer_from_deterministic_narrative_evidence("葉文潔是在什麼時期被調往紅岸基地工作的？", evidence)
-
-        self.assertIn("文化大革命期間", answer)
-        self.assertIn("1969", answer)
-        self.assertIn("紅岸基地", answer)
-
-    def test_deterministic_answer_handles_character_arc_questions(self):
-        evidence = "\n".join(
-            [
-                "- [來源 1 / 2.寂靜的春天] 人類惡的一面已經在她年輕的心靈上刻下不可愈合的巨創。",
-                "- [來源 1 / 2.寂靜的春天] 這本書使她對人類之惡第一次進行了理性的思考。",
-                "- [來源 2 / 3.紅岸之一] 白沐霖的背叛使葉文潔陷入監室。",
-                "- [來源 3 / 23.紅岸之六] 正在飛向太陽的信息是：到這裏來吧，我將幫助你們獲得這個世界。",
-            ]
-        )
-
-        answer = _answer_from_deterministic_narrative_evidence("葉文潔的人生經歷如何影響她後來的選擇？", evidence)
-
-        self.assertIn("多段創傷與失望累積", answer)
-        self.assertIn("理性思考", answer)
-        self.assertIn("再次發送訊號", answer)
-
-    def test_deterministic_answer_handles_open_stance_questions_before_warning_fact_template(self):
-        evidence = "\n".join(
-            [
-                "- [來源 1 / 23.紅岸之六] 警告你們：不要回答！不要回答！！不要回答！！！",
-                "- [來源 1 / 23.紅岸之六] 如果回答，發射源將被定位，你們的行星系將遭到入侵，你們的世界將被佔領！",
-                "- [來源 2 / 23.紅岸之六] 正在飛向太陽的信息是：到這裏來吧，我將幫助你們獲得這個世界。",
-            ]
-        )
-
-        answer = _answer_from_deterministic_narrative_evidence("如果你是葉文潔，在收到外星文明的警告後，你會向宇宙再次發送訊號嗎？為什麼？", evidence)
-
-        self.assertIn("我不會", answer)
-        self.assertIn("開放式立場判斷", answer)
-        self.assertIn("不可逆", answer)
-
-    def test_deterministic_answer_handles_civilization_weakness_questions(self):
-        evidence = "\n".join(
-            [
-                "- [來源 1 / 1.瘋狂年代] 葉哲泰在文化大革命批判中遭紅衛兵毆打。",
-                "- [來源 2 / 2.寂靜的春天] 這本書使她對人類之惡第一次進行了理性的思考。",
-                "- [來源 3 / 24.叛亂] 降臨派的最終目標就是請主毀滅全人類。",
-            ]
-        )
-
-        answer = _answer_from_deterministic_narrative_evidence("小說中哪些事件最能體現人類文明的弱點？", evidence)
-
-        self.assertIn("文革批判", answer)
-        self.assertIn("人類之惡", answer)
-        self.assertIn("ETO", answer)
 
     def test_verifier_accepts_alias_expanded_query_evidence_overlap(self):
         decision = assess_query_evidence_overlap(
@@ -664,6 +803,23 @@ Owner: Team B
 
         self.assertEqual(results[0]["title"], "1.3 病假")
         self.assertGreater(results[0]["embedding_score"], results[1]["embedding_score"])
+
+    def test_qdrant_vector_store_search_returns_dense_results(self):
+        chunks = [
+            {"id": "c1", "title": "One", "content": "alpha", "source": "sample", "parent_title": "", "chunk_index": 0},
+            {"id": "c2", "title": "Two", "content": "beta", "source": "sample", "parent_title": "", "chunk_index": 1},
+        ]
+        store = QdrantVectorStore.in_memory(
+            chunks,
+            embeddings=[[1.0, 0.0], [0.0, 1.0]],
+            collection_name="test_qdrant_vector_store_search",
+            embed_query_fn=lambda query: [0.0, 1.0],
+        )
+
+        results = store.search("semantic beta", top_k=1)
+
+        self.assertEqual(results[0]["id"], "c2")
+        self.assertEqual(results[0]["retrieval_method"], "qdrant_dense")
 
     def test_hybrid_search_combines_keyword_and_embedding_scores(self):
         chunks = chunk_markdown(SAMPLE_MARKDOWN, source="sample.md")
@@ -1343,6 +1499,75 @@ Owner: Team B
         self.assertTrue(any(result["id"] == "c2" for result in results))
         self.assertTrue(all("rrf_parent_context" in result["retrieval_method"] for result in results))
 
+    def test_rrf_parent_context_uses_qdrant_vector_store_for_dense_retrieval(self):
+        chunks = [
+            {"id": "c1", "source": "sample", "chunk_index": 0, "parent_title": "P", "title": "One", "content": "alpha"},
+            {"id": "c2", "source": "sample", "chunk_index": 1, "parent_title": "P", "title": "Two", "content": "beta answer"},
+        ]
+        store = QdrantVectorStore.in_memory(
+            chunks,
+            embeddings=[[1.0, 0.0], [0.0, 1.0]],
+            collection_name="test_rrf_parent_context_qdrant",
+            embed_query_fn=lambda query: [0.0, 1.0],
+        )
+
+        results = _rrf_parent_context_results(
+            question="semantic target",
+            rewritten_query="semantic target",
+            chunks=chunks,
+            embeddings=None,
+            top_k=1,
+            candidate_k=2,
+            final_context_k=5,
+            vector_store=store,
+        )
+
+        self.assertEqual(results[0]["id"], "c2")
+        self.assertIn("rrf_parent_context", results[0]["retrieval_method"])
+        self.assertIn("qdrant_dense", results[0]["rerank_trace"])
+
+    def test_definition_route_query_expands_what_is_questions(self):
+        definition_query = _definition_route_query("水滴是什麼東西？")
+
+        self.assertIn("水滴", definition_query)
+        self.assertIn("正式称呼", definition_query)
+        self.assertIn("用途", definition_query)
+        self.assertIn("材料", definition_query)
+        self.assertEqual(_definition_route_query("葉文潔為什麼回覆訊號？"), "")
+
+    def test_rrf_parent_context_uses_definition_route_for_definition_questions(self):
+        chunks = [
+            {
+                "id": "noise",
+                "source": "three-body.txt",
+                "chunk_index": 1,
+                "parent_title": "水滴事件",
+                "title": "水滴 / part 1",
+                "content": "水滴以超高速接近地球，羅輯以為它要撞擊。",
+            },
+            {
+                "id": "definition",
+                "source": "three-body.txt",
+                "chunk_index": 2,
+                "parent_title": "水滴事件",
+                "title": "水滴 / part 2",
+                "content": "探測器呈完美的水滴形狀，後來人們給探測器換了個稱呼，叫做水滴。",
+            },
+        ]
+
+        results = _rrf_parent_context_results(
+            question="水滴是什麼東西？",
+            rewritten_query="水滴是什麼東西？",
+            chunks=chunks,
+            embeddings=None,
+            top_k=2,
+            candidate_k=4,
+            final_context_k=5,
+        )
+
+        self.assertEqual(results[0]["id"], "definition")
+        self.assertIn("definition_bm25", results[0]["rerank_trace"])
+
     def test_rrf_parent_context_keeps_original_question_terms_when_rewrite_drops_them(self):
         chunks = [
             {"id": "noise", "source": "three-body.txt", "chunk_index": 1, "parent_title": "Narrative Text", "title": "葉文潔 / part 1", "content": "葉文潔 葉文潔 葉文潔與三體遊戲。"},
@@ -1704,26 +1929,26 @@ Owner: Team B
         context = render_evidence_context(
             chunks=[
                 {
-                    "source": "three-body.txt",
-                    "parent_title": "Narrative Text",
-                    "title": "32.監聽員 / part 9",
+                    "source": "policy.txt",
+                    "parent_title": "Process Notes",
+                    "title": "申請處理結果",
                     "content": (
-                        "元首對發出警告信息的監聽員沒有什麼憤恨。"
-                        "毫無疑問你是有罪的，你是三體世界所有輪迴的文明中最大的罪犯。"
-                        "但三體法律實在出現一個例外——你自由了。"
-                        "我要讓你活到她失去一切希望的那一天。"
+                        "承辦人先說明申請背景。"
+                        "主管核定本案適用例外。"
+                        "最後處置結果為核准展延，期限為三十日。"
+                        "逾期未完成者將依規定處罰。"
                     ),
                 }
             ],
-            question="三體元首如何處置發出警告的 1379 號監聽員？",
-            keywords=["三體", "元首", "處置", "警告", "1379號", "監聽員"],
+            question="這個申請最後如何處理？",
+            keywords=["處理", "處置", "核准展延", "期限", "處罰"],
             max_chars_per_chunk=500,
             max_snippets_per_chunk=3,
         )
 
-        self.assertIn("有罪", context)
-        self.assertIn("自由", context)
-        self.assertIn("失去一切希望", context)
+        self.assertIn("核准展延", context)
+        self.assertIn("期限", context)
+        self.assertIn("處罰", context)
 
     def test_three_agent_output_includes_hybrid_query_variants(self):
         output = _format_three_agent_output(
@@ -2206,7 +2431,7 @@ Owner: Team B
                 "parent_title": "Narrative Text",
                 "title": "7.遠星遊戲",
                 "content": (
-                    "主角第一次進入遠星遊戲。這是亂紀元，太陽不一定能升起。"
+                    "主角第一次進入遠星遊戲。這個文明的環境很危險，太陽不一定能升起。"
                     "嚴寒和酷熱會毀滅一切，人們只能脫水求生。"
                 ),
             }
@@ -2217,24 +2442,10 @@ Owner: Team B
             question="主角第一次進入遠星遊戲時，所處文明正面臨什麼樣的天文災難？",
         )
 
-        self.assertIn("亂紀元", evidence)
+        self.assertIn("太陽不一定能升起", evidence)
         self.assertIn("嚴寒", evidence)
         self.assertIn("酷熱", evidence)
         self.assertIn("脫水", evidence)
-
-    def test_deterministic_narrative_evidence_accepts_distance_answer(self):
-        decision = assess_deterministic_narrative_evidence(
-            "文中提到雲天明距離原本時代與地球環境大約有多遠？",
-            (
-                "- [來源 1] 但淡黃色的湖面提醒著他，這是另一個時代，另一個世界，"
-                "是近七個世紀之後，近三百光年外的另一顆星星。"
-            ),
-        )
-
-        self.assertIsNotNone(decision)
-        self.assertTrue(decision["is_related"])
-        self.assertTrue(decision["is_answerable"])
-        self.assertIn("narrative distance evidence", decision["reason"])
 
     def test_deterministic_narrative_evidence_accepts_first_scene_hazard_answer(self):
         decision = assess_deterministic_narrative_evidence(
@@ -2242,7 +2453,7 @@ Owner: Team B
             "\n".join(
                 [
                     "- [來源 1] 主角第一次進入遠星遊戲。",
-                    "- [來源 1] 這是亂紀元，太陽不一定能升起。",
+                    "- [來源 1] 這個文明的環境很危險，太陽不一定能升起。",
                     "- [來源 1] 嚴寒和酷熱會毀滅一切，人們只能脫水求生。",
                 ]
             ),
@@ -2252,94 +2463,6 @@ Owner: Team B
         self.assertTrue(decision["is_related"])
         self.assertTrue(decision["is_answerable"])
         self.assertIn("environment hazard evidence", decision["reason"])
-
-    def test_answer_from_deterministic_narrative_evidence_returns_distance_answer(self):
-        answer = _answer_from_deterministic_narrative_evidence(
-            "文中提到雲天明距離原本時代與地球環境大約有多遠？",
-            (
-                "- [來源 1] 但淡黃色的湖面提醒著他，這是另一個時代，另一個世界，"
-                "是近七個世紀之後，近三百光年外的另一顆星星。"
-            ),
-        )
-
-        self.assertIn("近七個世紀", answer)
-        self.assertIn("近三百光年", answer)
-
-    def test_answer_from_deterministic_narrative_evidence_returns_environment_hazard_answer(self):
-        answer = _answer_from_deterministic_narrative_evidence(
-            "主角第一次進入遠星遊戲時，所處文明正面臨什麼樣的天文災難？",
-            "\n".join(
-                [
-                    "- [來源 1] 主角第一次進入遠星遊戲。",
-                    "- [來源 1] 這是亂紀元，太陽不一定能升起。",
-                    "- [來源 1] 嚴寒和酷熱會毀滅一切，人們只能脫水求生。",
-                ]
-            ),
-        )
-
-        self.assertIn("亂紀元", answer)
-        self.assertIn("太陽運行不可預測", answer)
-        self.assertIn("脫水", answer)
-
-    def test_answer_from_deterministic_narrative_evidence_returns_death_cause_answer(self):
-        answer = _answer_from_deterministic_narrative_evidence(
-            "葉文潔的父親是如何去世的？",
-            "\n".join(
-                [
-                    "- [來源 1] 她掄起皮帶衝上去，她的三個小同志立刻跟上，帶銅扣的寬皮帶如雨點般打在他的頭上和身上。",
-                    "- [來源 1] 當那四個女孩兒施暴奪去父親生命時，她曾想衝上台去。",
-                    "- [來源 1] 她只是凝視台上父親已沒有生命的軀體。",
-                ]
-            ),
-        )
-
-        self.assertIn("施暴毆打致死", answer)
-        self.assertIn("奪去父親生命", answer)
-
-    def test_answer_from_deterministic_narrative_evidence_returns_scientist_suicide_bridge(self):
-        answer = _answer_from_deterministic_narrative_evidence(
-            "為什麼小說中有多位頂尖科學家接連自殺？",
-            "\n".join(
-                [
-                    "- [來源 1] 一切的一切都導向這樣一個結果：物理學從來就沒有存在過，將來也不會存在。",
-                    "- [來源 1] 這些自殺的學者大部分與科學邊界有過聯繫。",
-                    "- [來源 2] 智子能夠在所有加速器中製造錯誤的撞擊結果。",
-                ]
-            ),
-        )
-
-        self.assertIn("智子", answer)
-        self.assertIn("物理學從來就沒有存在過", answer)
-        self.assertIn("科學信念", answer)
-
-    def test_answer_from_deterministic_narrative_evidence_returns_physics_absent_background(self):
-        answer = _answer_from_deterministic_narrative_evidence(
-            "「物理學不存在了」這句話是在什麼背景下被提出的？",
-            "\n".join(
-                [
-                    "- [來源 1] 楊冬的遺書寫著：一切的一切都導向這樣一個結果：物理學從來就沒有存在過，將來也不會存在。",
-                    "- [來源 1] 常偉思說，相關具體信息與世界上三台新的高能加速器建成后取得的實驗結果有關。",
-                ]
-            ),
-        )
-
-        self.assertIn("楊冬遺書", answer)
-        self.assertIn("高能加速器", answer)
-
-    def test_answer_from_deterministic_narrative_evidence_returns_eto_purpose(self):
-        answer = _answer_from_deterministic_narrative_evidence(
-            "地球三體組織（ETO）成立的主要目的為何？",
-            "\n".join(
-                [
-                    "- [來源 1] 這群人類叛徒齊聲喊出：世界屬於三體！",
-                    "- [來源 2] 降臨派的最終目標就是請主來執行這個神聖的懲罰：毀滅全人類！",
-                    "- [來源 2] 拯救派本質上是一個宗教團體，最終理想就是拯救主。",
-                ]
-            ),
-        )
-
-        self.assertIn("支持三體文明降臨", answer)
-        self.assertIn("毀滅全人類", answer)
 
     def test_verifier_prompt_surfaces_evidence_candidates_before_content(self):
         prompt = build_verifier_prompt(

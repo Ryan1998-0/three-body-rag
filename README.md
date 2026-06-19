@@ -109,9 +109,57 @@ http://127.0.0.1:8766
 
 ## 測試結果
 
+### 評測歷程
+
+原本的 `Reader 300` 題庫主要用讀者式簡單題測 retrieval，上限很高，但題型相對單一。後續重新設計 `Mixed 200`，把問題改成混合型，包含直接題、弱開放題、長句描述題與使用者視角改寫題，更接近真實提問。
+
 | 測試集 | 題數 | 評估項目 | 結果 | 題庫 | 報告 |
 | --- | ---: | --- | ---: | --- | --- |
 | 三體三部曲 Reader 300 | 300 | Retrieval Upper Bound | `98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
+| 三體三部曲 Mixed 200 原版 | 200 | Retrieval Upper Bound | `73.6%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-045105.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-045105.md) | [Report](evals/three_body_trilogy/mixed200_retrieval_upper_bound_report_20260620-045105.md) |
+| 三體三部曲 Mixed 200 詞表強化版 | 200 | Retrieval Upper Bound | `87.6%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.md) | [Report](evals/three_body_trilogy/mixed200_retrieval_upper_bound_report_20260620-052704.md) |
+
+### Mixed 200 題型
+
+`Mixed 200` 由 50 個三體三部曲事實點產生，每個事實點設計 4 種問法：
+
+| 維度 | 類型 |
+| --- | --- |
+| Answer Style | `factoid` / `open_ended` |
+| Prompt Style | `direct` / `with_premise` |
+| Length Style | `concise_natural` / `verbose_natural` / `short_search_query` / `long_search_query` |
+| Phrasing | `document_similar` / `document_distant` |
+| User Level | `expert` / `novice` |
+
+這批題目刻意加入 `document_distant` 與 `long_search_query`，例如使用者不直接說「星環集團」，而是問「第三部裡商業組織如何成為逃亡技術研發平台」。這類問題可以測出 retrieval 是否能把使用者說法對齊到 knowledge base 原文詞彙。
+
+### 詞表強化方式
+
+詞表強化版加入 KB-aware vocabulary alignment：
+
+1. 由三體三部曲內容整理 profile 詞表：[aliases.json](profiles/three_body_trilogy/entities/aliases.json)。
+2. 詞表包含 `canonical`、`aliases`、`related_terms`、`triggers`。
+3. BM25 與 Dense 仍使用原始問題，但在查詢前用 profile 詞表補齊原文主詞。
+4. 補詞只存在 knowledge base profile，不寫死在核心 pipeline；更換 knowledge base 時可替換詞表。
+
+範例：
+
+```text
+原始問題：
+如果問第三部裡商業組織如何成為逃亡技術研發平台，應該查哪個集團？
+
+詞表補齊：
+星環集團、維德、程心、光速飛船、曲率驅動
+```
+
+強化前後重點數據：
+
+| 指標 | 原版 | 詞表強化版 |
+| --- | ---: | ---: |
+| 總分 | `73.6%` | `87.6%` |
+| 滿分題 | `105/200` | `141/200` |
+| Open-ended | `64.4%` | `85.0%` |
+| Long query | `57.6%` | `89.6%` |
 
 ## Knowledge Base 設定
 

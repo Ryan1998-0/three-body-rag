@@ -1,2 +1,3 @@
 numpy
+qdrant-client
 sentence-transformers
