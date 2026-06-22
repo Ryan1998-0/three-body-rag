@@ -172,12 +172,12 @@ http://127.0.0.1:8766
 
 這組測試把 `Reader 300` 與 `Mixed 200` 分別用「原版」和「附檢索詞表」各跑一次，總共 1000 次 QA Agent 問答。Retrieval Upper Bound 是主要觀察指標；QA 分數只用來輔助判斷 LLM 是否善用已檢索到的 context。
 
-| 測試集 | 題數 | Retrieval Upper Bound | QA Agent | 報告 |
-| --- | ---: | ---: | ---: | --- |
-| Reader 300 原版 | 300 | `1480/1500 = 98.7%` | `1260/1500 = 84.0%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
-| Reader 300 附檢索詞表 | 300 | `1480/1500 = 98.7%` | `1245/1500 = 83.0%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
-| Mixed 200 原版 | 200 | `736/1000 = 73.6%` | `572/1000 = 57.2%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
-| Mixed 200 附檢索詞表 | 200 | `876/1000 = 87.6%` | `616/1000 = 61.6%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| 測試集 | 題數 | Retrieval Upper Bound | QA Agent | 題庫 | 回答 | 報告 |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| Reader 300 原版 | 300 | `1480/1500 = 98.7%` | `1260/1500 = 84.0%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Markdown](evals/three_body_trilogy/qa_agent_comparison/reader300_qa_answers_full-20260620-135227.md) | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| Reader 300 附檢索詞表 | 300 | `1480/1500 = 98.7%` | `1245/1500 = 83.0%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Markdown](evals/three_body_trilogy/qa_agent_comparison/reader300_qa_answers_full-20260620-135227.md) | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| Mixed 200 原版 | 200 | `736/1000 = 73.6%` | `572/1000 = 57.2%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-045105.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-045105.md) | [Markdown](evals/three_body_trilogy/qa_agent_comparison/mixed200_qa_answers_full-20260620-135227.md) | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| Mixed 200 附檢索詞表 | 200 | `876/1000 = 87.6%` | `616/1000 = 61.6%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.md) | [Markdown](evals/three_body_trilogy/qa_agent_comparison/mixed200_qa_answers_full-20260620-135227.md) | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
 
 結論：`Reader 300` 因為題目簡單且接近原文，原版本來就接近 retrieval 滿分；`Mixed 200` 更接近真實使用者問題，加入檢索詞表後 Retrieval Upper Bound 從 `73.6%` 提升到 `87.6%`，提升 `14.0` 個百分點。
 
