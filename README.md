@@ -113,11 +113,18 @@ http://127.0.0.1:8766
 
 原本的 `Reader 300` 題庫主要用讀者式簡單題測 retrieval，上限很高，但題型相對單一。後續重新設計 `Mixed 200`，把問題改成混合型，包含直接題、弱開放題、長句描述題與使用者視角改寫題，更接近真實提問。
 
+`Reader 300` 和 `Mixed 200` 的差異：
+
+| 題庫 | 目的 | 題型特徵 | 適合觀察 |
+| --- | --- | --- | --- |
+| Reader 300 | 檢查基本事實檢索是否穩定 | 讀者式簡單題，較接近原文措辭，答案多為明確人物、事件或名詞 | 基礎 retrieval 是否接近滿分 |
+| Mixed 200 | 模擬真實使用者提問 | 混合直接題、弱開放題、長句、短搜尋句、遠離原文措辭與新手問法 | 檢索詞表是否能補足用詞落差 |
+
 | 測試集 | 題數 | 評估項目 | 結果 | 題庫 | 報告 |
 | --- | ---: | --- | ---: | --- | --- |
 | 三體三部曲 Reader 300 | 300 | Retrieval Upper Bound | `98.7%` | [JSON](evals/three_body_trilogy/questions_trilogy_300_reader.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_300_reader.md) | [Report](evals/three_body_trilogy/trilogy_300_reader_retrieval_upper_bound_report_20260618-115821.md) |
 | 三體三部曲 Mixed 200 原版 | 200 | Retrieval Upper Bound | `73.6%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-045105.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-045105.md) | [Report](evals/three_body_trilogy/mixed200_retrieval_upper_bound_report_20260620-045105.md) |
-| 三體三部曲 Mixed 200 詞表強化版 | 200 | Retrieval Upper Bound | `87.6%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.md) | [Report](evals/three_body_trilogy/mixed200_retrieval_upper_bound_report_20260620-052704.md) |
+| 三體三部曲 Mixed 200 附檢索詞表 | 200 | Retrieval Upper Bound | `87.6%` | [JSON](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.json) / [Markdown](evals/three_body_trilogy/questions_trilogy_mixed200_20260620-052704.md) | [Report](evals/three_body_trilogy/mixed200_retrieval_upper_bound_report_20260620-052704.md) |
 
 ### Mixed 200 題型
 
@@ -133,9 +140,9 @@ http://127.0.0.1:8766
 
 這批題目刻意加入 `document_distant` 與 `long_search_query`，例如使用者不直接說「星環集團」，而是問「第三部裡商業組織如何成為逃亡技術研發平台」。這類問題可以測出 retrieval 是否能把使用者說法對齊到 knowledge base 原文詞彙。
 
-### 詞表強化方式
+### 檢索詞表方式
 
-詞表強化版加入 KB-aware vocabulary alignment：
+附檢索詞表版本加入 KB-aware vocabulary alignment：
 
 1. 由三體三部曲內容整理 profile 詞表：[aliases.json](profiles/three_body_trilogy/entities/aliases.json)。
 2. 詞表包含 `canonical`、`aliases`、`related_terms`、`triggers`。
@@ -152,14 +159,27 @@ http://127.0.0.1:8766
 星環集團、維德、程心、光速飛船、曲率驅動
 ```
 
-強化前後重點數據：
+加入檢索詞表前後重點數據：
 
-| 指標 | 原版 | 詞表強化版 |
+| 指標 | 原版 | 附檢索詞表 |
 | --- | ---: | ---: |
 | 總分 | `73.6%` | `87.6%` |
 | 滿分題 | `105/200` | `141/200` |
 | Open-ended | `64.4%` | `85.0%` |
 | Long query | `57.6%` | `89.6%` |
+
+### QA Agent 1000 題比較
+
+這組測試把 `Reader 300` 與 `Mixed 200` 分別用「原版」和「附檢索詞表」各跑一次，總共 1000 次 QA Agent 問答。Retrieval Upper Bound 是主要觀察指標；QA 分數只用來輔助判斷 LLM 是否善用已檢索到的 context。
+
+| 測試集 | 題數 | Retrieval Upper Bound | QA Agent | 報告 |
+| --- | ---: | ---: | ---: | --- |
+| Reader 300 原版 | 300 | `1480/1500 = 98.7%` | `1260/1500 = 84.0%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| Reader 300 附檢索詞表 | 300 | `1480/1500 = 98.7%` | `1245/1500 = 83.0%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| Mixed 200 原版 | 200 | `736/1000 = 73.6%` | `572/1000 = 57.2%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+| Mixed 200 附檢索詞表 | 200 | `876/1000 = 87.6%` | `616/1000 = 61.6%` | [Report](evals/three_body_trilogy/qa_agent_comparison/qa_agent_comparison_report_full-20260620-135227.md) |
+
+結論：`Reader 300` 因為題目簡單且接近原文，原版本來就接近 retrieval 滿分；`Mixed 200` 更接近真實使用者問題，加入檢索詞表後 Retrieval Upper Bound 從 `73.6%` 提升到 `87.6%`，提升 `14.0` 個百分點。
 
 ## Knowledge Base 設定
 
